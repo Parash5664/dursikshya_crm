@@ -1,0 +1,859 @@
+
+
+Leads crm · HTML
+<div id="app"></div>
+<style>
+  :root{
+    --bg:#F6F7FB; --surface:#FFFFFF; --ink:#181B2E; --ink-soft:#6B7280; --line:#E5E7EF;
+    --primary:#3730A3; --primary-dark:#2A2680; --primary-soft:#EDECFB;
+    --hot:#EA580C; --hot-soft:#FDE9DD;
+    --warm:#D97706; --warm-soft:#FCEFDA;
+    --cold:#0284C7; --cold-soft:#E1F1FB;
+    --success:#059669; --success-soft:#DCF3EA;
+    --danger:#DC2626; --danger-soft:#FBE3E2;
+    --neutral-soft:#EEF0F4;
+    --mono:'SF Mono', ui-monospace, Menlo, monospace;
+    --sans:-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; }
+  .shell { display:flex; min-height:100vh; }
+ 
+  /* sidebar */
+  .sidebar { width:212px; background:var(--primary-dark); color:#fff; flex-shrink:0; display:flex; flex-direction:column; }
+  .brand { padding:20px 18px 16px; font-weight:700; font-size:15px; border-bottom:1px solid rgba(255,255,255,0.1); }
+  .brand .sub { display:block; font-weight:400; font-size:11px; opacity:0.65; margin-top:2px; }
+  .nav { padding:10px 10px; display:flex; flex-direction:column; gap:2px; }
+  .nav-item { padding:9px 12px; border-radius:6px; font-size:13.5px; font-weight:500; color:#c9c6ec; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .nav-item.active { background:rgba(255,255,255,0.12); color:#fff; }
+  .nav-item:hover { background:rgba(255,255,255,0.07); }
+  .nav-badge { font-family:var(--mono); font-size:10px; background:rgba(255,255,255,0.18); padding:1px 6px; border-radius:8px; }
+ 
+  .main { flex:1; min-width:0; }
+  .topbar { background:var(--surface); border-bottom:1px solid var(--line); padding:14px 26px; display:flex; justify-content:space-between; align-items:center; }
+  .topbar h1 { font-size:17px; margin:0; font-weight:700; }
+  .topbar .date { font-size:12px; color:var(--ink-soft); }
+  .content { padding:22px 26px 60px; }
+ 
+  /* KPI grid */
+  .kpi-grid { display:grid; grid-template-columns: repeat(5, 1fr); gap:12px; margin-bottom:22px; }
+  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; cursor:pointer; transition:box-shadow .1s, transform .1s; }
+  .kpi:hover { box-shadow:0 3px 10px rgba(20,20,50,0.06); transform:translateY(-1px); }
+  .kpi-label { font-size:11px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px; }
+  .kpi-num { font-size:24px; font-weight:700; }
+  .kpi.accent-hot .kpi-num { color:var(--hot); }
+  .kpi.accent-cold .kpi-num { color:var(--cold); }
+  .kpi.accent-success .kpi-num { color:var(--success); }
+  .kpi.accent-danger .kpi-num { color:var(--danger); }
+  .kpi.accent-primary .kpi-num { color:var(--primary); }
+ 
+  .grid-2 { display:grid; grid-template-columns: 1.4fr 1fr; gap:16px; align-items:start; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:16px; }
+  .card-head { padding:12px 16px; border-bottom:1px solid var(--line); font-weight:700; font-size:13.5px; display:flex; justify-content:space-between; align-items:center; }
+  .card-body { padding:6px 0; }
+  .bar-row { display:flex; align-items:center; gap:10px; padding:7px 16px; font-size:12.5px; }
+  .bar-row .label { width:130px; flex-shrink:0; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-track { flex:1; height:8px; background:var(--neutral-soft); border-radius:4px; overflow:hidden; }
+  .bar-fill { height:100%; background:var(--primary); border-radius:4px; }
+  .bar-count { width:28px; text-align:right; font-family:var(--mono); font-weight:700; }
+ 
+  /* tables */
+  table.t { width:100%; border-collapse:collapse; font-size:13px; }
+  table.t th { text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-soft); background:var(--bg); padding:9px 12px; border-bottom:1px solid var(--line); font-weight:700; cursor:pointer; user-select:none; }
+  table.t td { padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.t tr.row:hover { background:#FAFAFD; cursor:pointer; }
+  table.t tr:last-child td { border-bottom:none; }
+  .empty { padding:40px 20px; text-align:center; color:var(--ink-soft); font-size:13px; }
+ 
+  .badge { display:inline-block; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+  .b-hot { background:var(--hot-soft); color:var(--hot); }
+  .b-warm { background:var(--warm-soft); color:var(--warm); }
+  .b-cold { background:var(--cold-soft); color:var(--cold); }
+  .b-neutral { background:var(--neutral-soft); color:var(--ink-soft); }
+  .b-primary { background:var(--primary-soft); color:var(--primary); }
+  .b-success { background:var(--success-soft); color:var(--success); }
+  .b-danger { background:var(--danger-soft); color:var(--danger); }
+  .date-overdue { color:var(--danger); font-weight:700; }
+ 
+  /* toolbar */
+  .toolbar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+  .toolbar .left { display:flex; gap:8px; flex-wrap:wrap; }
+  input[type=text], input[type=tel], input[type=email], input[type=date], input[type=number], select, textarea {
+    padding:8px 11px; border:1px solid var(--line); border-radius:6px; font-size:13px; background:var(--surface); color:var(--ink); font-family:var(--sans);
+  }
+  .btn { background:var(--primary); color:#fff; border:none; padding:9px 15px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer; }
+  .btn:hover { background:var(--primary-dark); }
+  .btn-ghost { background:none; border:1px solid var(--line); color:var(--ink-soft); padding:9px 13px; border-radius:6px; font-size:13px; cursor:pointer; }
+  .btn-ghost:hover { border-color:var(--primary); color:var(--primary); }
+  .btn-danger-ghost { background:none; border:1px solid var(--danger-soft); color:var(--danger); padding:9px 13px; border-radius:6px; font-size:13px; cursor:pointer; }
+ 
+  .import-box { background:var(--surface); border:1px dashed #C9CBE8; border-radius:8px; padding:14px 16px; margin-bottom:16px; }
+  .import-box h4 { margin:0 0 3px; font-size:13px; }
+  .import-box p { margin:0 0 8px; font-size:12px; color:var(--ink-soft); }
+  .import-box textarea { width:100%; min-height:64px; font-family:var(--mono); font-size:12px; }
+  .import-row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+  .import-status { font-size:12px; color:var(--primary); font-weight:600; }
+ 
+  /* kanban */
+  .kanban { display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; }
+  .kcol { background:#EFF0F6; border-radius:8px; min-width:230px; width:230px; flex-shrink:0; padding:10px; }
+  .kcol.dragover { background:#E3E1F7; }
+  .kcol-head { display:flex; justify-content:space-between; align-items:center; padding:2px 4px 10px; font-weight:700; font-size:12.5px; }
+  .kcard { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:10px 11px; margin-bottom:8px; cursor:grab; font-size:12.5px; }
+  .kcard:active { cursor:grabbing; }
+  .kcard .kname { font-weight:700; margin-bottom:4px; }
+  .kcard .kmeta { color:var(--ink-soft); font-size:11.5px; margin-bottom:6px; }
+  .kcard .kfoot { display:flex; justify-content:space-between; align-items:center; }
+  .kempty { text-align:center; color:var(--ink-soft); font-size:11.5px; padding:16px 4px; }
+ 
+  /* drawer */
+  .drawer-overlay { position:fixed; inset:0; background:rgba(15,15,35,0.4); z-index:60; display:flex; justify-content:flex-end; }
+  .drawer { background:var(--surface); width:560px; max-width:94vw; height:100vh; overflow-y:auto; padding:0; }
+  .drawer-head { padding:20px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--surface); z-index:2; }
+  .drawer-head .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
+  .drawer-name { font-size:19px; font-weight:700; }
+  .drawer-sub { font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .close-x { background:none; border:none; font-size:22px; cursor:pointer; color:var(--ink-soft); line-height:1; }
+  .dtabs { display:flex; gap:4px; margin-top:14px; }
+  .dtab { padding:7px 13px; border-radius:6px; font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .dtab.active { background:var(--primary-soft); color:var(--primary); }
+  .dbody { padding:20px 24px; }
+  .field-label { font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-soft); font-weight:700; margin-bottom:5px; display:block; margin-top:14px; }
+  .field-label:first-of-type { margin-top:0; }
+  .drawer input, .drawer select, .drawer textarea { width:100%; }
+  .drawer textarea { resize:vertical; min-height:60px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .chip-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .chip { font-size:11px; font-weight:600; padding:5px 10px; border-radius:20px; border:1.5px solid var(--line); background:var(--surface); cursor:pointer; color:var(--ink-soft); }
+  .chip.active-hot { border-color:var(--hot); background:var(--hot-soft); color:var(--hot); }
+  .chip.active-warm { border-color:var(--warm); background:var(--warm-soft); color:var(--warm); }
+  .chip.active-cold { border-color:var(--cold); background:var(--cold-soft); color:var(--cold); }
+  .chip.active-primary { border-color:var(--primary); background:var(--primary); color:#fff; }
+ 
+  .timeline { margin-top:10px; }
+  .tl-item { display:flex; gap:12px; padding-bottom:16px; position:relative; }
+  .tl-item:not(:last-child)::before { content:''; position:absolute; left:5px; top:16px; bottom:0; width:1px; background:var(--line); }
+  .tl-dot { width:11px; height:11px; border-radius:50%; background:var(--primary); margin-top:3px; flex-shrink:0; z-index:1; }
+  .tl-content { flex:1; background:var(--bg); border-radius:6px; padding:10px 12px; }
+  .tl-date { font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:4px; display:flex; justify-content:space-between; }
+  .tl-text { font-size:13px; }
+  .new-followup { background:var(--primary-soft); border-radius:8px; padding:14px; margin-top:6px; }
+  .drawer-actions { display:flex; justify-content:space-between; margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+ 
+  .courses-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:12px; }
+  .course-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .course-card .cname { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .course-card .cfee { font-family:var(--mono); font-size:15px; font-weight:700; color:var(--primary); }
+  .course-card .cdur { font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .course-card .clead-count { font-size:11.5px; color:var(--ink-soft); margin-top:8px; }
+ 
+  .settings-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:16px; }
+  .settings-list { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .settings-list h4 { margin:0 0 10px; font-size:13px; }
+  .settings-chip { display:inline-flex; align-items:center; gap:6px; background:var(--neutral-soft); border-radius:20px; padding:5px 10px; font-size:12px; margin:0 6px 6px 0; }
+  .settings-chip button { background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; line-height:1; }
+  .add-row { display:flex; gap:6px; margin-top:8px; }
+  .add-row input { flex:1; }
+ 
+  @media (max-width: 1000px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .sidebar { width:64px; }
+    .sidebar .nav-item span.label { display:none; }
+    .brand .sub, .brand-text { display:none; }
+  }
+</style>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+ 
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+ 
+const SEED_LEADS = [{"id": "LEAD-0001", "createdDate": "2026-07-12", "name": "Sanjog Paudel", "phone": "9821189569, 9863460979", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is currently busy, need to contact after 5pm, or will contact when he is free", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0002", "createdDate": "2026-06-02", "name": "Krish", "phone": "9807687258", "email": "shatishkumarsah954@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0003", "createdDate": "2026-07-17", "name": "Aayush Kaphle", "phone": "9818253791", "email": "akblox467@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "incomming call blocked", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0004", "createdDate": "2026-07-20", "name": "Manashi Ghimire", "phone": "9818077855", "email": "manashighimire7@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0005", "createdDate": "2026-07-12", "name": "Rishi Pawar", "phone": "9810329090", "email": "khadkarishu9@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "might join after 2-3 months", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0006", "createdDate": "2026-06-29", "name": "Eben kaliraj", "phone": "9713056767", "email": "Ben4ya67@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will join next year", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0007", "createdDate": "2026-07-08", "name": "dipika sah", "phone": "981, 3026692", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is currently busy, will visit in her free time", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0008", "createdDate": "2026-07-12", "name": "Swostika Dulal", "phone": "9847754685", "email": "Swostikdulal400@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Aptitude Test", "temp": "Hot", "nextFollowUp": "2026-07-30", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "she has consult with her parents, told her to join later after 2-3 months", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0009", "createdDate": "2026-07-12", "name": "Rabi Kishor Sah", "phone": "9744630212, 9707363330", "email": "rabisah2077@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "due to rainfall couldnot return to ktm, will consult with his brother for online counselling ", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0010", "createdDate": "2026-07-07", "name": "Nityahh Shrestha", "phone": "9813039339", "email": "nityahhshrestha005@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not decided yet, need some time to decide", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0011", "createdDate": "2026-07-19", "name": "Sakila", "phone": "9822928134", "email": "sakmand19@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "haven't been able to make time yet. she will visit soon", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0012", "createdDate": "2026-07-05", "name": "Prashant Bhatta", "phone": "9763618727", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0013", "createdDate": "2026-06-21", "name": "Sheakh Ilhak", "phone": "9810097979", "email": "ilhaksheakh@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "for fsd, still out of valley, need physical session will visit after returning ktm, might be next week", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0014", "createdDate": "2026-06-21", "name": "Pranish Shakya", "phone": "9818345044", "email": "pranishshaya86@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "joined another institute", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0015", "createdDate": "2026-07-07", "name": "Bhairab kumar Shrestha", "phone": "9851009915", "email": "bhairab_nepal35@yahoo.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-25", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "was asking about the free course, will visit sunday around 12pm", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0016", "createdDate": "2026-07-12", "name": "Prazol!!", "phone": "9744575504", "email": "Mallaprajwol7@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call received by an unknown person, he was saying that he found this phone", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0017", "createdDate": "2026-07-02", "name": "Sunil Adhikari", "phone": "9851026057", "email": "sunil.adhikari.ca@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0018", "createdDate": "2026-06-29", "name": "Ajaj Ali", "phone": "9840956599", "email": "azaz.ali1974@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0019", "createdDate": "2026-07-06", "name": "Shanti Poudel", "phone": "9841031340", "email": "shanti.poudel@nsbl.com.np", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0020", "createdDate": "2026-07-05", "name": "Smith Santos", "phone": "9851364476", "email": "Smith Santos", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0021", "createdDate": "2026-06-21", "name": "Dipesh Adhikari", "phone": "9810027141", "email": "maskachhetri11@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0022", "createdDate": "2026-06-26", "name": "Alisha Moktan", "phone": "9765158607", "email": "alishamoktan24@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is busy, contact later", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0023", "createdDate": "2026-07-05", "name": "Suman Khatri", "phone": "9849980206", "email": "Suman Khatri", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "cut the call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0024", "createdDate": "2026-07-05", "name": "Sanjay L. Tamang", "phone": "9742873076", "email": "Sanjay L. Tamang", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0025", "createdDate": "2026-07-08", "name": "Niraula Kabita", "phone": "9869562261", "email": "niraulakabita98@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-30", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "master completed, is out of valley, will return ktm after 4-5 days and will visit", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0026", "createdDate": "2026-06-29", "name": "Sarbastha", "phone": "9845647405", "email": "akxhitbhandari59@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "switched off", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0027", "createdDate": "2026-07-10", "name": "Denal Dukpa Nuppa", "phone": "9861796382", "email": "Denaldukpanuppa@gmail.com", "college": "", "city": "", "source": "Other", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "switched off", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0028", "createdDate": "2026-07-14", "name": "Pra Yan Chirag", "phone": "9860803679", "email": "chiragyadav9818@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Hot", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "decided not to join for now, if he change his mind he will visit and join the course", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0029", "createdDate": "2026-07-16", "name": "K\u00e4ushal Koirala", "phone": "9843722473", "email": "kaushalkoirala75@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0030", "createdDate": "2026-07-14", "name": "Chanda Shrestha", "phone": "984, 1345757", "email": "chandashr@yahoo.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0031", "createdDate": "2026-07-21", "name": "Rupa Shrestha", "phone": "9802355008", "email": "", "college": "", "city": "", "source": "Phone Inquiry", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is busy, need to contatc later", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0032", "createdDate": "2026-07-19", "name": "\u0645\u062d\u0645\u062f \u0627\u0633\u062f \u0627\u0646\u0635\u0627\u0631\u06cc", "phone": "9805572315", "email": "comradeasadansari@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Hot", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "12 grade, just for an inquiry, will join after his plus 2", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0033", "createdDate": "2026-06-30", "name": "Nan Ji", "phone": "9804594541", "email": "Nan Ji", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is outside, need to contact after an hour", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0034", "createdDate": "2026-07-02", "name": "Anju Chettri", "phone": "9743257766, 9705293515", "email": "anjuchhetri44@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-09-01", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "join accounting class, it will be 3 months course, will join after completing this course", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0035", "createdDate": "2026-06-28", "name": "Prashant Lumre Magar", "phone": "9709797144", "email": "mprasant148@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will visit sunday around 12-1pm", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0036", "createdDate": "2026-07-07", "name": "Roopesh Shrestha", "phone": "9801067046", "email": "comewhitehouse@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0037", "createdDate": "2026-07-03", "name": "Sukant Kumar Sshu", "phone": "9860906424", "email": "sukantmb@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0038", "createdDate": "2026-06-29", "name": "Mijal", "phone": "9849783702", "email": "mijalcreator@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0039", "createdDate": "2026-07-13", "name": "Gaurav Singh", "phone": "9826854508", "email": "gauravsinghroacj@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0040", "createdDate": "2026-07-05", "name": "Jake basnet", "phone": "9851403755", "email": "Jake basnet", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0041", "createdDate": "2026-07-13", "name": "Puspa Yadav", "phone": "9811104760", "email": "pushpayadav61551@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call rec but didn't talk and cut the call in the middle of the talk", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0042", "createdDate": "2026-06-02", "name": "Rashu Laspacha Mukhiya", "phone": "9813269267", "email": "monymukhiya@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "need to contact after an hour", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0043", "createdDate": "2026-07-13", "name": "Ofcx Stoner \u304e", "phone": "9823186276", "email": "tmgsusan881@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "due to his busy schedule wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0044", "createdDate": "2026-07-12", "name": "Rubin Rai", "phone": "9802762731", "email": "rairubin980@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is outside, share course details", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0045", "createdDate": "2026-07-13", "name": "Basant_Khanal", "phone": "9800749714", "email": "me.basantkhanal07@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "need internship only", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0046", "createdDate": "2026-06-29", "name": "Mahesh Pathak", "phone": "9817692421", "email": "maheshpathak81@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0047", "createdDate": "2026-07-08", "name": "Mahesh Giri", "phone": "9869344443", "email": "maheshgiri2051@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will return ktm on sunday and will visit ", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0048", "createdDate": "2026-07-12", "name": "Rajan", "phone": "9827702102", "email": "rajancng2@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0049", "createdDate": "2026-06-25", "name": "Om Singh", "phone": "981, 0539715", "email": "oms182919@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0050", "createdDate": "2026-07-15", "name": "it's me__Nandanirani", "phone": "9820031798", "email": "guptanandani484@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0051", "createdDate": "2026-07-24", "name": "\u0928\u093f\u0930\u093e\u091c\u0928 \u092c\u0928\u0930\u0948\u0924 \u092f\u093e\u0926\u092c", "phone": "9779816447176", "email": "yaduwanshiniranjan124@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0052", "createdDate": "2026-07-24", "name": "Bishnu Lama", "phone": "9779741687027", "email": "bishnumoktan745@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will visit sunday or monday", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0053", "createdDate": "2026-07-24", "name": "Suzan Pandey", "phone": "9779843683654", "email": "sujanpandey747@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0054", "createdDate": "2026-07-24", "name": "Biken Shahi", "phone": "97709813921194", "email": "bikenshahi88@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0055", "createdDate": "2026-07-24", "name": "Rafin shrestha", "phone": "9779861149886", "email": "rafinshrestha2@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "From kalanki, will try to visit on sunday or monday, share course details", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0056", "createdDate": "2026-07-24", "name": "Lumi Shrestha", "phone": "9779849707586", "email": "luminashrestha2003@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0057", "createdDate": "2026-07-24", "name": "Aakriti Shrestha", "phone": "9779840929273", "email": "aakritistha0927@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}];
+ 
+const DEFAULT_COURSES = [
+  { name:"FUTURZ", fee:150000, duration:"9 Months Training + 3 Months Paid Internship" },
+  { name:"IBM PBEL", fee:7000, duration:"IBM Certification Program" },
+  { name:"Crash Course + Internship", fee:45000, duration:"Crash Course + Internship" },
+  { name:"Normal Crash Course", fee:25000, duration:"Crash Course" },
+];
+const DEFAULT_SETTINGS = {
+  statuses: ["New","Contacted","Interested","Follow-up","Payment Pending","Admitted","Lost"],
+  temps: ["Hot","Warm","Cold"],
+  sources: ["Facebook","Instagram","Website","Referral","Walk-in","Phone Inquiry","Google Search","Event","Other"],
+  admissionStatuses: ["Pending","Admitted"],
+};
+ 
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function tomorrowStr(){ const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
+function isThisMonth(s){ if(!s) return false; const d=new Date(s+"T00:00:00"); const n=new Date(); return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth(); }
+function fmtDate(d){ if(!d) return "—"; try { return new Date(d+"T00:00:00").toLocaleDateString('en-US',{month:'short',day:'numeric'}); } catch(e){ return d; } }
+function fmtMoney(n){ if(n===null||n===undefined||n==='') return "—"; return "NPR " + Number(n).toLocaleString(); }
+function uid(p){ return (p||'L') + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function tempClass(t){ return t==="Hot" ? "b-hot" : t==="Warm" ? "b-warm" : t==="Cold" ? "b-cold" : "b-neutral"; }
+function statusClass(s){
+  if(s==="Admitted") return "b-success";
+  if(s==="Lost") return "b-danger";
+  if(s==="New") return "b-neutral";
+  return "b-primary";
+}
+ 
+function parseImportText(text){
+  return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+    return { name:(parts[0]||"").trim(), phone:(parts[1]||"").trim(), email:(parts[2]||"").trim(), course:(parts[3]||"").trim() };
+  }).filter(r=>r.name);
+}
+ 
+function toCSV(leads){
+  const headers = ["Lead ID","Created Date","Name","Phone","Email","College","City","Source","Course","Fee","Status","Interest","Next Follow-up","Admission Status","Admission Date","Latest Remark"];
+  const rows = leads.map(l => [l.id,l.createdDate,l.name,l.phone,l.email,l.college,l.city,l.source,l.course,l.fee||"",l.status,l.temp,l.nextFollowUp,l.admissionStatus,l.admissionDate||"", (l.remarks[0]?l.remarks[0].text:"")]);
+  const esc = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  return [headers, ...rows].map(r => r.map(esc).join(",")).join("\n");
+}
+function downloadCSV(csv, filename){
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+ 
+function App(){
+  const [leads, setLeads] = useState(null);
+  const [courses, setCourses] = useState(DEFAULT_COURSES);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("dashboard");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortKey, setSortKey] = useState("nextFollowUp");
+  const [sortDir, setSortDir] = useState("asc");
+  const [drawerLead, setDrawerLead] = useState(null);
+  const [drawerTab, setDrawerTab] = useState("overview");
+  const [newFollowup, setNewFollowup] = useState({ text:"", type:"Call", nextFollowUp:"", status:"", temp:"", course:"" });
+  const [importText, setImportText] = useState("");
+  const [importMsg, setImportMsg] = useState("");
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [syncMsg, setSyncMsg] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [dashFilter, setDashFilter] = useState(null);
+  const [dragId, setDragId] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
+ 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get('crm-leads', true);
+        if(res){ setLeads(JSON.parse(res.value)); }
+        else { setLeads(SEED_LEADS); await window.storage.set('crm-leads', JSON.stringify(SEED_LEADS), true); }
+      } catch(e){ setLeads(SEED_LEADS); }
+      try {
+        const c = await window.storage.get('crm-courses', true);
+        if(c) setCourses(JSON.parse(c.value));
+        else await window.storage.set('crm-courses', JSON.stringify(DEFAULT_COURSES), true);
+      } catch(e){}
+      try {
+        const s = await window.storage.get('crm-settings', true);
+        if(s) setSettings(JSON.parse(s.value));
+        else await window.storage.set('crm-settings', JSON.stringify(DEFAULT_SETTINGS), true);
+      } catch(e){}
+      try {
+        const u = await window.storage.get('crm-sheet-url', true);
+        if(u) setSheetUrl(u.value);
+      } catch(e){}
+      setLoading(false);
+    })();
+  }, []);
+ 
+  async function persistLeads(next){ setLeads(next); try { await window.storage.set('crm-leads', JSON.stringify(next), true); } catch(e){} }
+  async function persistCourses(next){ setCourses(next); try { await window.storage.set('crm-courses', JSON.stringify(next), true); } catch(e){} }
+  async function persistSettings(next){ setSettings(next); try { await window.storage.set('crm-settings', JSON.stringify(next), true); } catch(e){} }
+ 
+  function openDrawer(lead){
+    setDrawerLead({...lead});
+    setDrawerTab("history");
+    setNewFollowup({ text:"", type:"Call", nextFollowUp: lead.nextFollowUp||"", status: lead.status, temp: lead.temp, course: lead.course||"" });
+  }
+  function openNewLead(){
+    const blank = { id: uid('LEAD-'), createdDate: todayStr(), name:"", phone:"", email:"", college:"", city:"", source: settings.sources[0]||"", course: courses[0] ? courses[0].name : "", fee: courses[0] ? courses[0].fee : "", status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[] };
+    setDrawerLead(blank); setDrawerTab("overview");
+  }
+ 
+  function saveDrawer(){
+    if(!drawerLead.name.trim()) return;
+    const exists = leads.some(l=>l.id===drawerLead.id);
+    const next = exists ? leads.map(l=>l.id===drawerLead.id?drawerLead:l) : [...leads, drawerLead];
+    persistLeads(next);
+    setDrawerLead(null);
+  }
+  function deleteDrawerLead(){
+    persistLeads(leads.filter(l=>l.id!==drawerLead.id));
+    setDrawerLead(null);
+  }
+ 
+  function logFollowup(){
+    if(!newFollowup.text.trim()) return;
+    const entry = { date: todayStr(), text: newFollowup.text.trim(), type: newFollowup.type, nextFollowUp: newFollowup.nextFollowUp, status: newFollowup.status, temp: newFollowup.temp, course: newFollowup.course };
+    const c = courses.find(x=>x.name===newFollowup.course);
+    const updated = { ...drawerLead, remarks: [entry, ...(drawerLead.remarks||[])], status: newFollowup.status, temp: newFollowup.temp, nextFollowUp: newFollowup.nextFollowUp, course: newFollowup.course, fee: c ? c.fee : drawerLead.fee };
+    setDrawerLead(updated);
+    setNewFollowup({...newFollowup, text:""});
+  }
+ 
+  async function saveSheetUrl(url){
+    setSheetUrl(url);
+    try { await window.storage.set('crm-sheet-url', url, true); } catch(e){}
+  }
+ 
+  async function syncFromSheet(){
+    if(!sheetUrl.trim()){ setSyncMsg("https://script.google.com/macros/s/AKfycbz-cyqz7fOLeaS9K_HrdcYD-Ht5xwD2cXsyOn9XDhbw3n9ekwSWwT54tMrHkWqpt2Z_8Q/exec"); return; }
+    setSyncing(true); setSyncMsg("");
+    try {
+      const res = await fetch(sheetUrl.trim());
+      const rows = await res.json();
+      const existingPhones = new Set(leads.map(l => (l.phone||"").replace(/\D/g,'')));
+      const additions = [];
+      rows.forEach(r => {
+        const name = r.name || r.Name || "";
+        if(!name) return;
+        const phone = String(r.phone || r.Phone || "").trim();
+        const phoneDigits = phone.replace(/\D/g,'');
+        if(phoneDigits && existingPhones.has(phoneDigits)) return;
+        additions.push({
+          id: uid('LEAD-'), createdDate: todayStr(), name, phone, email: r.email || r.Email || "",
+          college:"", city:"", source:"Sheet sync", course: courses[0] ? courses[0].name : "", fee: courses[0] ? courses[0].fee : "",
+          status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
+        });
+        if(phoneDigits) existingPhones.add(phoneDigits);
+      });
+      if(additions.length){ persistLeads([...leads, ...additions]); }
+      setSyncMsg(additions.length ? `Synced ${additions.length} new lead${additions.length>1?'s':''}.` : "No new leads — you're up to date.");
+    } catch(e){
+      setSyncMsg("Couldn't reach that URL. Make sure the Apps Script is deployed with access set to 'Anyone'.");
+    }
+    setSyncing(false);
+  }
+ 
+  function courseChange(courseName){
+    const c = courses.find(x=>x.name===courseName);
+    setDrawerLead({...drawerLead, course: courseName, fee: c ? c.fee : drawerLead.fee});
+  }
+ 
+  function runImport(){
+    const rows = parseImportText(importText);
+    if(rows.length===0){ setImportMsg("No valid rows found — each line needs at least a name."); return; }
+    const additions = rows.map(r => ({
+      id: uid('LEAD-'), createdDate: todayStr(), name:r.name, phone:r.phone, email:r.email, college:"", city:"",
+      source:"Sheet import", course: r.course || (courses[0]?courses[0].name:""), fee: courses.find(c=>c.name===r.course)?.fee || "",
+      status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
+    }));
+    persistLeads([...leads, ...additions]);
+    setImportMsg(`Imported ${additions.length} lead${additions.length>1?'s':''}.`);
+    setImportText("");
+  }
+ 
+  const dueToday = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp===todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
+  const dueTomorrow = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp===tomorrowStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
+  const overdue = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp && l.nextFollowUp<todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
+  const hot = useMemo(()=> !leads?[]:leads.filter(l=>l.temp==="Hot"), [leads]);
+  const cold = useMemo(()=> !leads?[]:leads.filter(l=>l.temp==="Cold"), [leads]);
+  const admittedThisMonth = useMemo(()=> !leads?[]:leads.filter(l=>l.status==="Admitted" && isThisMonth(l.admissionDate)), [leads]);
+  const admittedToday = useMemo(()=> !leads?[]:leads.filter(l=>l.status==="Admitted" && l.admissionDate===todayStr()), [leads]);
+  const pending = useMemo(()=> !leads?[]:leads.filter(l=>l.status!=="Admitted" && l.status!=="Lost"), [leads]);
+  const conversionRate = useMemo(()=>{
+    if(!leads) return 0;
+    const closed = leads.filter(l=>l.status==="Admitted"||l.status==="Lost").length;
+    const admitted = leads.filter(l=>l.status==="Admitted").length;
+    return closed ? Math.round((admitted/closed)*100) : 0;
+  }, [leads]);
+  const revenueThisMonth = useMemo(()=>{
+    if(!leads) return 0;
+    return admittedThisMonth.reduce((sum,l)=> sum + (Number(l.fee)||0), 0);
+  }, [leads, admittedThisMonth]);
+ 
+  const courseCounts = useMemo(()=>{
+    const c = {}; courses.forEach(cs=>c[cs.name]=0);
+    (leads||[]).forEach(l=>{ if(l.course) c[l.course]=(c[l.course]||0)+1; });
+    return c;
+  }, [leads, courses]);
+  const sourceCounts = useMemo(()=>{
+    const c = {};
+    (leads||[]).forEach(l=>{ const s=l.source||"Other"; c[s]=(c[s]||0)+1; });
+    return c;
+  }, [leads]);
+  const maxCourseCount = Math.max(1, ...Object.values(courseCounts));
+  const maxSourceCount = Math.max(1, ...Object.values(sourceCounts));
+ 
+  const filteredLeads = useMemo(() => {
+    if(!leads) return [];
+    let base = leads;
+    if(dashFilter==="hot") base = hot;
+    else if(dashFilter==="cold") base = cold;
+    else if(dashFilter==="today") base = dueToday;
+    else if(dashFilter==="tomorrow") base = dueTomorrow;
+    else if(dashFilter==="overdue") base = overdue;
+    else if(dashFilter==="admittedMonth") base = admittedThisMonth;
+    else if(dashFilter==="pending") base = pending;
+    let out = base.filter(l => {
+      const matchesSearch = !search || (l.name+l.course+l.phone+l.email+l.id).toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter==="All" || l.status===statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+    out = [...out].sort((a,b) => {
+      let av = a[sortKey]||""; let bv = b[sortKey]||"";
+      if(sortKey==="fee"){ av=Number(av)||0; bv=Number(bv)||0; return sortDir==="asc"? av-bv : bv-av; }
+      return sortDir==="asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+    return out;
+  }, [leads, search, statusFilter, sortKey, sortDir, dashFilter, hot, cold, dueToday, dueTomorrow, overdue, admittedThisMonth, pending]);
+ 
+  function toggleSort(key){
+    if(sortKey===key) setSortDir(sortDir==="asc"?"desc":"asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
+ 
+  function moveLeadStatus(id, newStatus){
+    persistLeads(leads.map(l => l.id===id ? {...l, status:newStatus} : l));
+  }
+ 
+  if(loading){
+    return <div className="shell"><div className="main"><div className="content"><div className="empty">Loading CRM…</div></div></div></div>;
+  }
+ 
+  const NAV = [
+    {id:"dashboard", label:"Dashboard"},
+    {id:"kanban", label:"Pipeline (Kanban)"},
+    {id:"leads", label:"Leads", count: leads.length},
+    {id:"courses", label:"Courses"},
+    {id:"settings", label:"Settings"},
+  ];
+ 
+  function DrawerLeadForm(){
+    const dl = drawerLead;
+    if(!dl) return null;
+    const isNew = !leads.some(l=>l.id===dl.id);
+    return (
+      <div className="drawer-overlay" onClick={(e)=>{ if(e.target.classList.contains('drawer-overlay')) setDrawerLead(null); }}>
+        <div className="drawer">
+          <div className="drawer-head">
+            <div className="top-row">
+              <div>
+                <div className="drawer-name">{isNew ? "New Lead" : dl.name}</div>
+                <div className="drawer-sub">{dl.id} · {dl.course || "No course"} {dl.fee ? " · " + fmtMoney(dl.fee) : ""}</div>
+              </div>
+              <button className="close-x" onClick={()=>setDrawerLead(null)}>×</button>
+            </div>
+            <div className="dtabs">
+              <div className={"dtab"+(drawerTab==="overview"?" active":"")} onClick={()=>setDrawerTab("overview")}>Overview</div>
+              {!isNew && <div className={"dtab"+(drawerTab==="history"?" active":"")} onClick={()=>setDrawerTab("history")}>Follow-up History{dl.remarks && dl.remarks.length ? ` (${dl.remarks.length})`:""}</div>}
+              {!isNew && <div className={"dtab"+(drawerTab==="notes"?" active":"")} onClick={()=>setDrawerTab("notes")}>Notes</div>}
+            </div>
+          </div>
+ 
+          <div className="dbody">
+            {drawerTab==="overview" && (
+              <div>
+                <label className="field-label">Name</label>
+                <input type="text" value={dl.name} onChange={e=>setDrawerLead({...dl,name:e.target.value})} placeholder="Full name" />
+                <div className="row2">
+                  <div><label className="field-label">Phone</label><input type="text" value={dl.phone} onChange={e=>setDrawerLead({...dl,phone:e.target.value})} /></div>
+                  <div><label className="field-label">Email</label><input type="email" value={dl.email} onChange={e=>setDrawerLead({...dl,email:e.target.value})} /></div>
+                </div>
+                <div className="row2">
+                  <div><label className="field-label">College</label><input type="text" value={dl.college} onChange={e=>setDrawerLead({...dl,college:e.target.value})} /></div>
+                  <div><label className="field-label">City</label><input type="text" value={dl.city} onChange={e=>setDrawerLead({...dl,city:e.target.value})} /></div>
+                </div>
+                <div className="row2">
+                  <div>
+                    <label className="field-label">Course</label>
+                    <select value={dl.course} onChange={e=>courseChange(e.target.value)}>
+                      <option value="">— select —</option>
+                      {courses.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div><label className="field-label">Fee (auto-filled, editable)</label>
+                    <input type="number" value={dl.fee||""} onChange={e=>setDrawerLead({...dl,fee:e.target.value})} /></div>
+                </div>
+                <label className="field-label">Lead source</label>
+                <select value={dl.source} onChange={e=>setDrawerLead({...dl,source:e.target.value})}>
+                  {settings.sources.map(s=><option key={s}>{s}</option>)}
+                </select>
+ 
+                <label className="field-label">Status</label>
+                <div className="chip-row">
+                  {settings.statuses.map(s => <div key={s} className={"chip"+(dl.status===s?" active-primary":"")} onClick={()=>setDrawerLead({...dl,status:s})}>{s}</div>)}
+                </div>
+                <label className="field-label">Interest level</label>
+                <div className="chip-row">
+                  {settings.temps.map(t => <div key={t} className={"chip"+(dl.temp===t?(" active-"+t.toLowerCase()):"")} onClick={()=>setDrawerLead({...dl,temp:t})}>{t}</div>)}
+                </div>
+                <label className="field-label">Next follow-up date</label>
+                <input type="date" value={dl.nextFollowUp||""} onChange={e=>setDrawerLead({...dl,nextFollowUp:e.target.value})} />
+ 
+                <div className="row2">
+                  <div><label className="field-label">Admission status</label>
+                    <select value={dl.admissionStatus} onChange={e=>setDrawerLead({...dl,admissionStatus:e.target.value, status: e.target.value==='Admitted' ? 'Admitted' : dl.status, admissionDate: e.target.value==='Admitted' ? (dl.admissionDate||todayStr()) : dl.admissionDate})}>
+                      {settings.admissionStatuses.map(s=><option key={s}>{s}</option>)}
+                    </select></div>
+                  <div><label className="field-label">Admission date</label>
+                    <input type="date" value={dl.admissionDate||""} onChange={e=>setDrawerLead({...dl,admissionDate:e.target.value})} /></div>
+                </div>
+ 
+                <div className="drawer-actions">
+                  {!isNew ? <button className="btn-danger-ghost" onClick={deleteDrawerLead}>Remove lead</button> : <span></span>}
+                  <button className="btn" onClick={saveDrawer}>Save</button>
+                </div>
+              </div>
+            )}
+ 
+            {drawerTab==="history" && (
+              <div>
+                <div className="new-followup">
+                  <label className="field-label">Log a new follow-up</label>
+                  <div className="row3">
+                    <select value={newFollowup.type} onChange={e=>setNewFollowup({...newFollowup,type:e.target.value})}>
+                      <option>Call</option><option>WhatsApp</option><option>Email</option><option>Meeting</option>
+                    </select>
+                    <select value={newFollowup.course} onChange={e=>setNewFollowup({...newFollowup,course:e.target.value})}>
+                      <option value="">Course —</option>
+                      {courses.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
+                    <div>
+                      <label className="field-label" style={{marginTop:0}}>Next follow-up (calendar)</label>
+                      <input type="date" value={newFollowup.nextFollowUp} onChange={e=>setNewFollowup({...newFollowup,nextFollowUp:e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="row2" style={{marginTop:'10px'}}>
+                    <div>
+                      <label className="field-label" style={{marginTop:0}}>Status</label>
+                      <select value={newFollowup.status} onChange={e=>setNewFollowup({...newFollowup,status:e.target.value})}>
+                        {settings.statuses.map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label" style={{marginTop:0}}>Interest level</label>
+                      <select value={newFollowup.temp} onChange={e=>setNewFollowup({...newFollowup,temp:e.target.value})}>
+                        {settings.temps.map(t=><option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <label className="field-label">Remark — what was discussed on the call</label>
+                  <textarea value={newFollowup.text} onChange={e=>setNewFollowup({...newFollowup,text:e.target.value})} placeholder="What happened on this call?"></textarea>
+                  <div style={{marginTop:'8px', display:'flex', justifyContent:'flex-end'}}>
+                    <button className="btn" onClick={logFollowup}>+ Log follow-up</button>
+                  </div>
+                </div>
+                <div className="timeline">
+                  {(!dl.remarks || dl.remarks.length===0) ? <div className="empty">No follow-ups logged yet.</div> :
+                    dl.remarks.map((r,idx) => (
+                      <div className="tl-item" key={idx}>
+                        <div className="tl-dot"></div>
+                        <div className="tl-content">
+                          <div className="tl-date"><span>{fmtDate(r.date)} · {r.type||"Call"}</span><span className={"badge "+statusClass(r.status)}>{r.status}</span></div>
+                          <div className="tl-text">{r.text}</div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+ 
+            {drawerTab==="notes" && (
+              <div>
+                <label className="field-label">Add a note</label>
+                <NotesEditor lead={dl} onSave={(notes)=>setDrawerLead({...dl, notes})} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+ 
+  function NotesEditor({ lead, onSave }){
+    const [draft, setDraft] = useState("");
+    function add(){
+      if(!draft.trim()) return;
+      onSave([{ date: todayStr(), text: draft.trim() }, ...(lead.notes||[])]);
+      setDraft("");
+    }
+    return (
+      <div>
+        <textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Private note about this lead…"></textarea>
+        <div style={{marginTop:'8px', display:'flex', justifyContent:'flex-end'}}><button className="btn-ghost" onClick={add}>+ Add note</button></div>
+        <div className="timeline" style={{marginTop:'10px'}}>
+          {(!lead.notes || lead.notes.length===0) ? <div className="empty">No notes yet.</div> :
+            lead.notes.map((n,idx)=>(
+              <div className="tl-item" key={idx}>
+                <div className="tl-dot" style={{background:'var(--warm)'}}></div>
+                <div className="tl-content"><div className="tl-date">{fmtDate(n.date)}</div><div className="tl-text">{n.text}</div></div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    );
+  }
+ 
+  function LeadsTable({ rows }){
+    if(rows.length===0) return <div className="empty">No leads match this view.</div>;
+    const Th = ({k, children}) => <th onClick={()=>toggleSort(k)}>{children}{sortKey===k ? (sortDir==="asc"?" ▲":" ▼") : ""}</th>;
+    return (
+      <table className="t">
+        <thead><tr>
+          <Th k="name">Lead</Th><Th k="course">Course</Th><Th k="status">Status</Th><Th k="temp">Interest</Th><Th k="nextFollowUp">Next Follow-up</Th><Th k="admissionStatus">Admission</Th>
+        </tr></thead>
+        <tbody>
+          {rows.map(l => {
+            const isOverdue = l.nextFollowUp && l.nextFollowUp<todayStr() && l.status!=="Admitted" && l.status!=="Lost";
+            return (
+              <tr className="row" key={l.id} onClick={()=>openDrawer(l)}>
+                <td><div style={{fontWeight:700}}>{l.name}</div><div style={{fontSize:'11.5px', color:'var(--ink-soft)'}}>{l.phone||"—"}</div></td>
+                <td>{l.course||"—"}</td>
+                <td><span className={"badge "+statusClass(l.status)}>{l.status}</span></td>
+                <td><span className={"badge "+tempClass(l.temp)}>{l.temp}</span></td>
+                <td className={isOverdue?"date-overdue":""}>{fmtDate(l.nextFollowUp)}</td>
+                <td><span className={"badge "+(l.admissionStatus==="Admitted"?"b-success":"b-neutral")}>{l.admissionStatus}</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+ 
+  return (
+    <div className="shell">
+      <div className="sidebar">
+        <div className="brand">Enrollment CRM<span className="sub">EdTech admissions desk</span></div>
+        <div className="nav">
+          {NAV.map(n => (
+            <div key={n.id} className={"nav-item"+(view===n.id?" active":"")} onClick={()=>{ setView(n.id); setDashFilter(null); }}>
+              <span className="label">{n.label}</span>
+              {n.count!==undefined && <span className="nav-badge">{n.count}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+ 
+      <div className="main">
+        <div className="topbar">
+          <h1>{NAV.find(n=>n.id===view)?.label}</h1>
+          <div className="date">{new Date().toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
+        </div>
+ 
+        <div className="content">
+          {view==="dashboard" && (
+            <React.Fragment>
+              <div className="kpi-grid">
+                <div className="kpi accent-primary" onClick={()=>{setView("leads"); setDashFilter(null);}}><div className="kpi-label">Total Leads</div><div className="kpi-num">{leads.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("today");}}><div className="kpi-label">Today's Follow-ups</div><div className="kpi-num">{dueToday.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("tomorrow");}}><div className="kpi-label">Tomorrow's Follow-ups</div><div className="kpi-num">{dueTomorrow.length}</div></div>
+                <div className="kpi accent-danger" onClick={()=>{setView("leads"); setDashFilter("overdue");}}><div className="kpi-label">Overdue Follow-ups</div><div className="kpi-num">{overdue.length}</div></div>
+                <div className="kpi accent-success" onClick={()=>{setView("leads"); setDashFilter("admittedMonth");}}><div className="kpi-label">Admissions This Month</div><div className="kpi-num">{admittedThisMonth.length}</div></div>
+                <div className="kpi accent-hot" onClick={()=>{setView("leads"); setDashFilter("hot");}}><div className="kpi-label">Hot Leads</div><div className="kpi-num">{hot.length}</div></div>
+                <div className="kpi accent-cold" onClick={()=>{setView("leads"); setDashFilter("cold");}}><div className="kpi-label">Cold Leads</div><div className="kpi-num">{cold.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("pending");}}><div className="kpi-label">Pending Leads</div><div className="kpi-num">{pending.length}</div></div>
+                <div className="kpi accent-success"><div className="kpi-label">Conversion Rate</div><div className="kpi-num">{conversionRate}%</div></div>
+                <div className="kpi accent-success"><div className="kpi-label">Revenue This Month</div><div className="kpi-num" style={{fontSize:'18px'}}>{fmtMoney(revenueThisMonth)}</div></div>
+              </div>
+ 
+              <div className="grid-2">
+                <div>
+                  <div className="card">
+                    <div className="card-head">Today's Follow-ups — who to call today</div>
+                    <div className="card-body"><LeadsTable rows={dueToday} /></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="card">
+                    <div className="card-head">Course-wise Leads</div>
+                    <div className="card-body">
+                      {courses.map(c => (
+                        <div className="bar-row" key={c.name}>
+                          <div className="label">{c.name}</div>
+                          <div className="bar-track"><div className="bar-fill" style={{width:(100*(courseCounts[c.name]||0)/maxCourseCount)+'%'}}></div></div>
+                          <div className="bar-count">{courseCounts[c.name]||0}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-head">Lead Source</div>
+                    <div className="card-body">
+                      {Object.keys(sourceCounts).map(s => (
+                        <div className="bar-row" key={s}>
+                          <div className="label">{s}</div>
+                          <div className="bar-track"><div className="bar-fill" style={{width:(100*sourceCounts[s]/maxSourceCount)+'%', background:'var(--cold)'}}></div></div>
+                          <div className="bar-count">{sourceCounts[s]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </React.Fragment>
+          )}
+ 
+          {view==="kanban" && (
+            <div className="kanban">
+              {settings.statuses.map(st => {
+                const cardsInCol = leads.filter(l=>l.status===st);
+                return (
+                  <div key={st} className={"kcol"+(dragOverCol===st?" dragover":"")}
+                       onDragOver={(e)=>{ e.preventDefault(); setDragOverCol(st); }}
+                       onDragLeave={()=>setDragOverCol(null)}
+                       onDrop={(e)=>{ e.preventDefault(); if(dragId) moveLeadStatus(dragId, st); setDragOverCol(null); setDragId(null); }}>
+                    <div className="kcol-head"><span>{st}</span><span className="nav-badge" style={{background:'var(--neutral-soft)', color:'var(--ink-soft)'}}>{cardsInCol.length}</span></div>
+                    {cardsInCol.length===0 && <div className="kempty">No leads</div>}
+                    {cardsInCol.map(l => (
+                      <div key={l.id} className="kcard" draggable onDragStart={()=>setDragId(l.id)} onClick={()=>openDrawer(l)}>
+                        <div className="kname">{l.name}</div>
+                        <div className="kmeta">{l.course||"—"}</div>
+                        <div className="kfoot">
+                          <span className={"badge "+tempClass(l.temp)}>{l.temp}</span>
+                          <span style={{fontSize:'11px', color: l.nextFollowUp && l.nextFollowUp<todayStr() ? 'var(--danger)':'var(--ink-soft)', fontWeight:600}}>{fmtDate(l.nextFollowUp)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+ 
+          {view==="leads" && (
+            <React.Fragment>
+              <div className="import-box">
+                <h4>Sync new leads from your Google Sheet</h4>
+                <p>Paste the deployed Apps Script web app URL for your leads sheet — new rows (by phone number) get pulled in automatically.</p>
+                <div style={{display:'flex', gap:'8px'}}>
+                  <input type="text" style={{flex:1}} placeholder="https://script.google.com/macros/s/.../exec" value={sheetUrl} onChange={e=>saveSheetUrl(e.target.value)} />
+                  <button className="btn" onClick={syncFromSheet} disabled={syncing}>{syncing ? "Syncing…" : "Sync now"}</button>
+                </div>
+                {syncMsg && <div className="import-status" style={{marginTop:'8px'}}>{syncMsg}</div>}
+              </div>
+ 
+              <div className="import-box">
+                <h4>Or paste rows manually</h4>
+                <p>Paste rows (Name, Phone, Email, Course — comma or tab separated, one per line).</p>
+                <textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder="Sunita Rai, 9800000000, sunita@email.com, FUTURZ"></textarea>
+                <div className="import-row">
+                  <span className="import-status">{importMsg}</span>
+                  <button className="btn" onClick={runImport}>Import rows</button>
+                </div>
+              </div>
+ 
+              <div className="toolbar">
+                <div className="left">
+                  <input type="text" placeholder="Search name, course, phone, ID…" value={search} onChange={e=>setSearch(e.target.value)} />
+                  <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+                    <option>All</option>
+                    {settings.statuses.map(s=><option key={s}>{s}</option>)}
+                  </select>
+                  {dashFilter && <button className="btn-ghost" onClick={()=>setDashFilter(null)}>Clear filter</button>}
+                </div>
+                <div style={{display:'flex', gap:'8px'}}>
+                  <button className="btn-ghost" onClick={()=>downloadCSV(toCSV(filteredLeads), 'leads-export.csv')}>Export CSV</button>
+                  <button className="btn" onClick={openNewLead}>+ Add lead</button>
+                </div>
+              </div>
+ 
+              <div className="card"><div className="card-body" style={{padding:0}}><LeadsTable rows={filteredLeads} /></div></div>
+            </React.Fragment>
+          )}
+ 
+          {view==="courses" && (
+            <CoursesView courses={courses} setCourses={persistCourses} courseCounts={courseCounts} />
+          )}
+ 
+          {view==="settings" && (
+            <SettingsView settings={settings} setSettings={persistSettings} />
+          )}
+        </div>
+      </div>
+ 
+      {drawerLead && <DrawerLeadForm />}
+    </div>
+  );
+}
+ 
+function CoursesView({ courses, setCourses, courseCounts }){
+  const [draft, setDraft] = useState({ name:"", fee:"", duration:"" });
+  function add(){
+    if(!draft.name.trim()) return;
+    setCourses([...courses, { name:draft.name.trim(), fee:Number(draft.fee)||0, duration:draft.duration.trim() }]);
+    setDraft({ name:"", fee:"", duration:"" });
+  }
+  function remove(name){ setCourses(courses.filter(c=>c.name!==name)); }
+  return (
+    <div>
+      <div className="courses-grid">
+        {courses.map(c => (
+          <div className="course-card" key={c.name}>
+            <div className="cname">{c.name}</div>
+            <div className="cfee">{fmtMoney(c.fee)}</div>
+            <div className="cdur">{c.duration}</div>
+            <div className="clead-count">{courseCounts[c.name]||0} leads</div>
+            <div style={{marginTop:'10px'}}><button className="btn-danger-ghost" onClick={()=>remove(c.name)}>Remove</button></div>
+          </div>
+        ))}
+      </div>
+      <div className="card" style={{marginTop:'16px'}}>
+        <div className="card-head">Add a course</div>
+        <div className="card-body" style={{padding:'14px 16px'}}>
+          <div className="row3">
+            <input type="text" placeholder="Course name" value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} />
+            <input type="number" placeholder="Fee (NPR)" value={draft.fee} onChange={e=>setDraft({...draft,fee:e.target.value})} />
+            <input type="text" placeholder="Duration" value={draft.duration} onChange={e=>setDraft({...draft,duration:e.target.value})} />
+          </div>
+          <div style={{marginTop:'10px', textAlign:'right'}}><button className="btn" onClick={add}>+ Add course</button></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+function SettingsView({ settings, setSettings }){
+  const [drafts, setDrafts] = useState({ statuses:"", temps:"", sources:"", admissionStatuses:"" });
+  function addTo(key){
+    const v = drafts[key].trim();
+    if(!v) return;
+    setSettings({...settings, [key]: [...settings[key], v]});
+    setDrafts({...drafts, [key]:""});
+  }
+  function removeFrom(key, val){
+    setSettings({...settings, [key]: settings[key].filter(x=>x!==val)});
+  }
+  const LABELS = { statuses:"Status Options", temps:"Interest Levels", sources:"Lead Sources", admissionStatuses:"Admission Status" };
+  return (
+    <div className="settings-grid">
+      {Object.keys(LABELS).map(key => (
+        <div className="settings-list" key={key}>
+          <h4>{LABELS[key]}</h4>
+          <div>
+            {settings[key].map(v => (
+              <span className="settings-chip" key={v}>{v}<button onClick={()=>removeFrom(key,v)}>×</button></span>
+            ))}
+          </div>
+          <div className="add-row">
+            <input type="text" placeholder={"Add new " + LABELS[key].toLowerCase().slice(0,-1)} value={drafts[key]} onChange={e=>setDrafts({...drafts,[key]:e.target.value})} onKeyDown={e=>{ if(e.key==='Enter') addTo(key); }} />
+            <button className="btn-ghost" onClick={()=>addTo(key)}>Add</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+ 
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+ 
+
+
+
