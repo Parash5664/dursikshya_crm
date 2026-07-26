@@ -539,8 +539,179 @@ function App(){
     {id:"settings", label:"Settings"},
   ];
 
-  function DrawerLeadForm(){
-    const dl = drawerLead;
+  return (
+    <div className="shell">
+      <div className="sidebar">
+        <div className="brand">Enrollment CRM<span className="sub">EdTech admissions desk</span></div>
+        <div className="nav">
+          {NAV.map(n => (
+            <div key={n.id} className={"nav-item"+(view===n.id?" active":"")} onClick={()=>{ setView(n.id); setDashFilter(null); }}>
+              <span className="label">{n.label}</span>
+              {n.count!==undefined && <span className="nav-badge">{n.count}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="topbar">
+          <h1>{NAV.find(n=>n.id===view)?.label}</h1>
+          <div className="date">{new Date().toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
+        </div>
+
+        <div className="content">
+          {view==="dashboard" && (
+            <React.Fragment>
+              <div className="kpi-grid">
+                <div className="kpi accent-primary" onClick={()=>{setView("leads"); setDashFilter(null);}}><div className="kpi-label">Total Leads</div><div className="kpi-num">{leads.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("today");}}><div className="kpi-label">Today's Follow-ups</div><div className="kpi-num">{dueToday.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("tomorrow");}}><div className="kpi-label">Tomorrow's Follow-ups</div><div className="kpi-num">{dueTomorrow.length}</div></div>
+                <div className="kpi accent-danger" onClick={()=>{setView("leads"); setDashFilter("overdue");}}><div className="kpi-label">Overdue Follow-ups</div><div className="kpi-num">{overdue.length}</div></div>
+                <div className="kpi accent-success" onClick={()=>{setView("leads"); setDashFilter("admittedMonth");}}><div className="kpi-label">Admissions This Month</div><div className="kpi-num">{admittedThisMonth.length}</div></div>
+                <div className="kpi accent-hot" onClick={()=>{setView("leads"); setDashFilter("hot");}}><div className="kpi-label">Hot Leads</div><div className="kpi-num">{hot.length}</div></div>
+                <div className="kpi accent-cold" onClick={()=>{setView("leads"); setDashFilter("cold");}}><div className="kpi-label">Cold Leads</div><div className="kpi-num">{cold.length}</div></div>
+                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("pending");}}><div className="kpi-label">Pending Leads</div><div className="kpi-num">{pending.length}</div></div>
+                <div className="kpi accent-success"><div className="kpi-label">Conversion Rate</div><div className="kpi-num">{conversionRate}%</div></div>
+                <div className="kpi accent-success"><div className="kpi-label">Revenue This Month</div><div className="kpi-num" style={{fontSize:'18px'}}>{fmtMoney(revenueThisMonth)}</div></div>
+              </div>
+
+              <div className="grid-2">
+                <div>
+                  <div className="card">
+                    <div className="card-head">Today's Follow-ups — who to call today</div>
+                    <div className="card-body"><LeadsTable rows={dueToday} sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} openDrawer={openDrawer} /></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="card">
+                    <div className="card-head">Course-wise Leads</div>
+                    <div className="card-body">
+                      {courses.map(c => (
+                        <div className="bar-row" key={c.name}>
+                          <div className="label">{c.name}</div>
+                          <div className="bar-track"><div className="bar-fill" style={{width:(100*(courseCounts[c.name]||0)/maxCourseCount)+'%'}}></div></div>
+                          <div className="bar-count">{courseCounts[c.name]||0}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-head">Lead Source</div>
+                    <div className="card-body">
+                      {Object.keys(sourceCounts).map(s => (
+                        <div className="bar-row" key={s}>
+                          <div className="label">{s}</div>
+                          <div className="bar-track"><div className="bar-fill" style={{width:(100*sourceCounts[s]/maxSourceCount)+'%', background:'var(--cold)'}}></div></div>
+                          <div className="bar-count">{sourceCounts[s]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </React.Fragment>
+          )}
+
+          {view==="kanban" && (
+            <div className="kanban">
+              {settings.statuses.map(st => {
+                const cardsInCol = leads.filter(l=>l.status===st);
+                return (
+                  <div key={st} className={"kcol"+(dragOverCol===st?" dragover":"")}
+                       onDragOver={(e)=>{ e.preventDefault(); setDragOverCol(st); }}
+                       onDragLeave={()=>setDragOverCol(null)}
+                       onDrop={(e)=>{ e.preventDefault(); if(dragId) moveLeadStatus(dragId, st); setDragOverCol(null); setDragId(null); }}>
+                    <div className="kcol-head"><span>{st}</span><span className="nav-badge" style={{background:'var(--neutral-soft)', color:'var(--ink-soft)'}}>{cardsInCol.length}</span></div>
+                    {cardsInCol.length===0 && <div className="kempty">No leads</div>}
+                    {cardsInCol.map(l => (
+                      <div key={l.id} className="kcard" draggable onDragStart={()=>setDragId(l.id)} onClick={()=>openDrawer(l)}>
+                        <div className="kname">{l.name}</div>
+                        <div className="kmeta">{l.course||"—"}</div>
+                        <div className="kfoot">
+                          <span className={"badge "+tempClass(l.temp)}>{l.temp}</span>
+                          <span style={{fontSize:'11px', color: l.nextFollowUp && l.nextFollowUp<todayStr() ? 'var(--danger)':'var(--ink-soft)', fontWeight:600}}>{fmtDate(l.nextFollowUp)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {view==="leads" && (
+            <React.Fragment>
+              <div className="import-box">
+                <h4>Sync new leads from your Google Sheet</h4>
+                <p>Paste your Google Sheet's share link (Share → "Anyone with the link" → Viewer) — new rows (by phone number) get pulled in automatically.</p>
+                <div style={{display:'flex', gap:'8px'}}>
+                  <input type="text" style={{flex:1}} placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing" value={sheetUrl} onChange={e=>saveSheetUrl(e.target.value)} />
+                  <button className="btn" onClick={syncFromSheet} disabled={syncing}>{syncing ? "Syncing…" : "Sync now"}</button>
+                </div>
+                {syncMsg && <div className="import-status" style={{marginTop:'8px'}}>{syncMsg}</div>}
+              </div>
+
+              <div className="import-box">
+                <h4>Upload a CSV file</h4>
+                <p>Export your leads sheet as CSV (or any CSV with Name, Phone, Email, Course columns) and upload it here.</p>
+                <input type="file" accept=".csv,text/csv" onChange={handleCSVFile} />
+              </div>
+
+              <div className="import-box">
+                <h4>Or paste rows manually</h4>
+                <p>Paste rows (Name, Phone, Email, Course — comma or tab separated, one per line).</p>
+                <textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder="Sunita Rai, 9800000000, sunita@email.com, FUTURZ"></textarea>
+                <div className="import-row">
+                  <span className="import-status">{importMsg}</span>
+                  <button className="btn" onClick={runImport}>Import rows</button>
+                </div>
+              </div>
+
+              <div className="toolbar">
+                <div className="left">
+                  <input type="text" placeholder="Search name, course, phone, ID…" value={search} onChange={e=>setSearch(e.target.value)} />
+                  <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+                    <option>All</option>
+                    {settings.statuses.map(s=><option key={s}>{s}</option>)}
+                  </select>
+                  {dashFilter && <button className="btn-ghost" onClick={()=>setDashFilter(null)}>Clear filter</button>}
+                </div>
+                <div style={{display:'flex', gap:'8px'}}>
+                  <button className="btn-ghost" onClick={()=>downloadCSV(toCSV(filteredLeads), 'leads-export.csv')}>Export CSV</button>
+                  <button className="btn" onClick={openNewLead}>+ Add lead</button>
+                </div>
+              </div>
+
+              <div className="card"><div className="card-body" style={{padding:0}}><LeadsTable rows={filteredLeads} sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} openDrawer={openDrawer} /></div></div>
+            </React.Fragment>
+          )}
+
+          {view==="courses" && (
+            <CoursesView courses={courses} setCourses={persistCourses} courseCounts={courseCounts} />
+          )}
+
+          {view==="settings" && (
+            <SettingsView settings={settings} setSettings={persistSettings} />
+          )}
+        </div>
+      </div>
+
+      {drawerLead && (
+        <DrawerLeadForm
+          drawerLead={drawerLead} setDrawerLead={setDrawerLead}
+          drawerTab={drawerTab} setDrawerTab={setDrawerTab}
+          leads={leads} courses={courses} settings={settings}
+          newFollowup={newFollowup} setNewFollowup={setNewFollowup}
+          courseChange={courseChange} logFollowup={logFollowup}
+          saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead}
+        />
+      )}
+    </div>
+  );
+}
+
+function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead }){
+  const dl = drawerLead;
     if(!dl) return null;
     const isNew = !leads.some(l=>l.id===dl.id);
     return (
@@ -682,7 +853,8 @@ function App(){
     );
   }
 
-  function NotesEditor({ lead, onSave }){
+
+function NotesEditor({ lead, onSave }){
     const [draft, setDraft] = useState("");
     function add(){
       if(!draft.trim()) return;
@@ -707,7 +879,8 @@ function App(){
     );
   }
 
-  function LeadsTable({ rows }){
+
+function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer }){
     if(rows.length===0) return <div className="empty">No leads match this view.</div>;
     const Th = ({k, children}) => <th onClick={()=>toggleSort(k)}>{children}{sortKey===k ? (sortDir==="asc"?" ▲":" ▼") : ""}</th>;
     return (
@@ -734,167 +907,6 @@ function App(){
     );
   }
 
-  return (
-    <div className="shell">
-      <div className="sidebar">
-        <div className="brand">Enrollment CRM<span className="sub">EdTech admissions desk</span></div>
-        <div className="nav">
-          {NAV.map(n => (
-            <div key={n.id} className={"nav-item"+(view===n.id?" active":"")} onClick={()=>{ setView(n.id); setDashFilter(null); }}>
-              <span className="label">{n.label}</span>
-              {n.count!==undefined && <span className="nav-badge">{n.count}</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="main">
-        <div className="topbar">
-          <h1>{NAV.find(n=>n.id===view)?.label}</h1>
-          <div className="date">{new Date().toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
-        </div>
-
-        <div className="content">
-          {view==="dashboard" && (
-            <React.Fragment>
-              <div className="kpi-grid">
-                <div className="kpi accent-primary" onClick={()=>{setView("leads"); setDashFilter(null);}}><div className="kpi-label">Total Leads</div><div className="kpi-num">{leads.length}</div></div>
-                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("today");}}><div className="kpi-label">Today's Follow-ups</div><div className="kpi-num">{dueToday.length}</div></div>
-                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("tomorrow");}}><div className="kpi-label">Tomorrow's Follow-ups</div><div className="kpi-num">{dueTomorrow.length}</div></div>
-                <div className="kpi accent-danger" onClick={()=>{setView("leads"); setDashFilter("overdue");}}><div className="kpi-label">Overdue Follow-ups</div><div className="kpi-num">{overdue.length}</div></div>
-                <div className="kpi accent-success" onClick={()=>{setView("leads"); setDashFilter("admittedMonth");}}><div className="kpi-label">Admissions This Month</div><div className="kpi-num">{admittedThisMonth.length}</div></div>
-                <div className="kpi accent-hot" onClick={()=>{setView("leads"); setDashFilter("hot");}}><div className="kpi-label">Hot Leads</div><div className="kpi-num">{hot.length}</div></div>
-                <div className="kpi accent-cold" onClick={()=>{setView("leads"); setDashFilter("cold");}}><div className="kpi-label">Cold Leads</div><div className="kpi-num">{cold.length}</div></div>
-                <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("pending");}}><div className="kpi-label">Pending Leads</div><div className="kpi-num">{pending.length}</div></div>
-                <div className="kpi accent-success"><div className="kpi-label">Conversion Rate</div><div className="kpi-num">{conversionRate}%</div></div>
-                <div className="kpi accent-success"><div className="kpi-label">Revenue This Month</div><div className="kpi-num" style={{fontSize:'18px'}}>{fmtMoney(revenueThisMonth)}</div></div>
-              </div>
-
-              <div className="grid-2">
-                <div>
-                  <div className="card">
-                    <div className="card-head">Today's Follow-ups — who to call today</div>
-                    <div className="card-body"><LeadsTable rows={dueToday} /></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="card">
-                    <div className="card-head">Course-wise Leads</div>
-                    <div className="card-body">
-                      {courses.map(c => (
-                        <div className="bar-row" key={c.name}>
-                          <div className="label">{c.name}</div>
-                          <div className="bar-track"><div className="bar-fill" style={{width:(100*(courseCounts[c.name]||0)/maxCourseCount)+'%'}}></div></div>
-                          <div className="bar-count">{courseCounts[c.name]||0}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="card">
-                    <div className="card-head">Lead Source</div>
-                    <div className="card-body">
-                      {Object.keys(sourceCounts).map(s => (
-                        <div className="bar-row" key={s}>
-                          <div className="label">{s}</div>
-                          <div className="bar-track"><div className="bar-fill" style={{width:(100*sourceCounts[s]/maxSourceCount)+'%', background:'var(--cold)'}}></div></div>
-                          <div className="bar-count">{sourceCounts[s]}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </React.Fragment>
-          )}
-
-          {view==="kanban" && (
-            <div className="kanban">
-              {settings.statuses.map(st => {
-                const cardsInCol = leads.filter(l=>l.status===st);
-                return (
-                  <div key={st} className={"kcol"+(dragOverCol===st?" dragover":"")}
-                       onDragOver={(e)=>{ e.preventDefault(); setDragOverCol(st); }}
-                       onDragLeave={()=>setDragOverCol(null)}
-                       onDrop={(e)=>{ e.preventDefault(); if(dragId) moveLeadStatus(dragId, st); setDragOverCol(null); setDragId(null); }}>
-                    <div className="kcol-head"><span>{st}</span><span className="nav-badge" style={{background:'var(--neutral-soft)', color:'var(--ink-soft)'}}>{cardsInCol.length}</span></div>
-                    {cardsInCol.length===0 && <div className="kempty">No leads</div>}
-                    {cardsInCol.map(l => (
-                      <div key={l.id} className="kcard" draggable onDragStart={()=>setDragId(l.id)} onClick={()=>openDrawer(l)}>
-                        <div className="kname">{l.name}</div>
-                        <div className="kmeta">{l.course||"—"}</div>
-                        <div className="kfoot">
-                          <span className={"badge "+tempClass(l.temp)}>{l.temp}</span>
-                          <span style={{fontSize:'11px', color: l.nextFollowUp && l.nextFollowUp<todayStr() ? 'var(--danger)':'var(--ink-soft)', fontWeight:600}}>{fmtDate(l.nextFollowUp)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {view==="leads" && (
-            <React.Fragment>
-              <div className="import-box">
-                <h4>Sync new leads from your Google Sheet</h4>
-                <p>Paste your Google Sheet's share link (Share → "Anyone with the link" → Viewer) — new rows (by phone number) get pulled in automatically.</p>
-                <div style={{display:'flex', gap:'8px'}}>
-                  <input type="text" style={{flex:1}} placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing" value={sheetUrl} onChange={e=>saveSheetUrl(e.target.value)} />
-                  <button className="btn" onClick={syncFromSheet} disabled={syncing}>{syncing ? "Syncing…" : "Sync now"}</button>
-                </div>
-                {syncMsg && <div className="import-status" style={{marginTop:'8px'}}>{syncMsg}</div>}
-              </div>
-
-              <div className="import-box">
-                <h4>Upload a CSV file</h4>
-                <p>Export your leads sheet as CSV (or any CSV with Name, Phone, Email, Course columns) and upload it here.</p>
-                <input type="file" accept=".csv,text/csv" onChange={handleCSVFile} />
-              </div>
-
-              <div className="import-box">
-                <h4>Or paste rows manually</h4>
-                <p>Paste rows (Name, Phone, Email, Course — comma or tab separated, one per line).</p>
-                <textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder="Sunita Rai, 9800000000, sunita@email.com, FUTURZ"></textarea>
-                <div className="import-row">
-                  <span className="import-status">{importMsg}</span>
-                  <button className="btn" onClick={runImport}>Import rows</button>
-                </div>
-              </div>
-
-              <div className="toolbar">
-                <div className="left">
-                  <input type="text" placeholder="Search name, course, phone, ID…" value={search} onChange={e=>setSearch(e.target.value)} />
-                  <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-                    <option>All</option>
-                    {settings.statuses.map(s=><option key={s}>{s}</option>)}
-                  </select>
-                  {dashFilter && <button className="btn-ghost" onClick={()=>setDashFilter(null)}>Clear filter</button>}
-                </div>
-                <div style={{display:'flex', gap:'8px'}}>
-                  <button className="btn-ghost" onClick={()=>downloadCSV(toCSV(filteredLeads), 'leads-export.csv')}>Export CSV</button>
-                  <button className="btn" onClick={openNewLead}>+ Add lead</button>
-                </div>
-              </div>
-
-              <div className="card"><div className="card-body" style={{padding:0}}><LeadsTable rows={filteredLeads} /></div></div>
-            </React.Fragment>
-          )}
-
-          {view==="courses" && (
-            <CoursesView courses={courses} setCourses={persistCourses} courseCounts={courseCounts} />
-          )}
-
-          {view==="settings" && (
-            <SettingsView settings={settings} setSettings={persistSettings} />
-          )}
-        </div>
-      </div>
-
-      {drawerLead && <DrawerLeadForm />}
-    </div>
-  );
-}
 
 function CoursesView({ courses, setCourses, courseCounts }){
   const [draft, setDraft] = useState({ name:"", fee:"", duration:"" });
