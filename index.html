@@ -173,6 +173,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
@@ -274,12 +276,31 @@ function downloadCSV(csv, filename){
   URL.revokeObjectURL(url);
 }
 
-const HAS_CLAUDE_STORAGE = (typeof window !== 'undefined' && typeof window.storage !== 'undefined' && window.storage !== null);
+const firebaseConfig = {
+  apiKey: "AIzaSyChw1cGrRa0qv3vDHLjYVWFjFbu1P8YxUs",
+  authDomain: "dursikshya-crm.firebaseapp.com",
+  projectId: "dursikshya-crm",
+  storageBucket: "dursikshya-crm.firebasestorage.app",
+  messagingSenderId: "867559348637",
+  appId: "1:867559348637:web:a6a053a7a35f2a3d927774"
+};
+
+let firestoreDB = null;
+try {
+  if(typeof firebase !== 'undefined'){
+    firebase.initializeApp(firebaseConfig);
+    firestoreDB = firebase.firestore();
+  }
+} catch(e){ console.error('Firebase init failed', e); }
 
 const Storage = {
   async get(key){
-    if(HAS_CLAUDE_STORAGE){
-      try { return await window.storage.get(key, true); } catch(e){ return null; }
+    if(firestoreDB){
+      try {
+        const snap = await firestoreDB.collection('crm').doc(key).get();
+        if(snap.exists) return { key, value: snap.data().value };
+        return null;
+      } catch(e){ console.error('Firestore get failed, falling back to local', e); }
     }
     try {
       const v = localStorage.getItem('dursikshya_crm_' + key);
@@ -287,11 +308,20 @@ const Storage = {
     } catch(e){ return null; }
   },
   async set(key, value){
-    if(HAS_CLAUDE_STORAGE){
-      try { return await window.storage.set(key, value, true); } catch(e){ return null; }
+    if(firestoreDB){
+      try {
+        await firestoreDB.collection('crm').doc(key).set({ value, updatedAt: Date.now() });
+        return { key, value };
+      } catch(e){ console.error('Firestore set failed, falling back to local', e); }
     }
     try { localStorage.setItem('dursikshya_crm_' + key, value); return { key, value }; }
     catch(e){ return null; }
+  },
+  subscribe(key, onChange){
+    if(!firestoreDB) return () => {};
+    return firestoreDB.collection('crm').doc(key).onSnapshot(snap => {
+      if(snap.exists) onChange(snap.data().value);
+    }, (e) => console.error('Firestore subscribe error', e));
   }
 };
 
@@ -341,6 +371,13 @@ function App(){
       } catch(e){}
       setLoading(false);
     })();
+  }, []);
+
+  useEffect(() => {
+    const unsub = Storage.subscribe('crm-leads', (value) => {
+      try { setLeads(JSON.parse(value)); } catch(e){}
+    });
+    return () => { if(typeof unsub === 'function') unsub(); };
   }, []);
 
   async function persistLeads(next){ setLeads(next); try { await Storage.set('crm-leads', JSON.stringify(next)); } catch(e){} }
