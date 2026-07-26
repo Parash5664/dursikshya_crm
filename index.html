@@ -316,6 +316,7 @@ function App(){
   const [dashFilter, setDashFilter] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
+  const [savedFlash, setSavedFlash] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -374,7 +375,18 @@ function App(){
     const c = courses.find(x=>x.name===newFollowup.course);
     const updated = { ...drawerLead, remarks: [entry, ...(drawerLead.remarks||[])], status: newFollowup.status, temp: newFollowup.temp, nextFollowUp: newFollowup.nextFollowUp, course: newFollowup.course, fee: c ? c.fee : drawerLead.fee };
     setDrawerLead(updated);
+    persistLeads(leads.map(l => l.id === updated.id ? updated : l));
     setNewFollowup({...newFollowup, text:""});
+    setSavedFlash("Follow-up saved ✓");
+    setTimeout(()=>setSavedFlash(""), 2500);
+  }
+
+  function saveNotes(dl, notes){
+    const updated = { ...dl, notes };
+    setDrawerLead(updated);
+    persistLeads(leads.map(l => l.id === updated.id ? updated : l));
+    setSavedFlash("Note saved ✓");
+    setTimeout(()=>setSavedFlash(""), 2500);
   }
 
   useEffect(() => {
@@ -704,13 +716,14 @@ function App(){
           newFollowup={newFollowup} setNewFollowup={setNewFollowup}
           courseChange={courseChange} logFollowup={logFollowup}
           saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead}
+          saveNotes={saveNotes} savedFlash={savedFlash}
         />
       )}
     </div>
   );
 }
 
-function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead }){
+function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead, saveNotes, savedFlash }){
   const dl = drawerLead;
     if(!dl) return null;
     const isNew = !leads.some(l=>l.id===dl.id);
@@ -723,7 +736,10 @@ function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, le
                 <div className="drawer-name">{isNew ? "New Lead" : dl.name}</div>
                 <div className="drawer-sub">{dl.id} · {dl.course || "No course"} {dl.fee ? " · " + fmtMoney(dl.fee) : ""}</div>
               </div>
-              <button className="close-x" onClick={()=>setDrawerLead(null)}>×</button>
+              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                {savedFlash && <span style={{fontSize:'12px', fontWeight:700, color:'var(--success)'}}>{savedFlash}</span>}
+                <button className="close-x" onClick={()=>setDrawerLead(null)}>×</button>
+              </div>
             </div>
             <div className="dtabs">
               <div className={"dtab"+(drawerTab==="overview"?" active":"")} onClick={()=>setDrawerTab("overview")}>Overview</div>
@@ -822,7 +838,7 @@ function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, le
                   <label className="field-label">Remark — what was discussed on the call</label>
                   <textarea value={newFollowup.text} onChange={e=>setNewFollowup({...newFollowup,text:e.target.value})} placeholder="What happened on this call?"></textarea>
                   <div style={{marginTop:'8px', display:'flex', justifyContent:'flex-end'}}>
-                    <button className="btn" onClick={logFollowup}>+ Log follow-up</button>
+                    <button className="btn" onClick={logFollowup}>💾 Save follow-up</button>
                   </div>
                 </div>
                 <div className="timeline">
@@ -844,7 +860,7 @@ function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, le
             {drawerTab==="notes" && (
               <div>
                 <label className="field-label">Add a note</label>
-                <NotesEditor lead={dl} onSave={(notes)=>setDrawerLead({...dl, notes})} />
+                <NotesEditor lead={dl} onSave={(notes)=>saveNotes(dl, notes)} />
               </div>
             )}
           </div>
