@@ -341,19 +341,14 @@ const LeadsStore = {
   },
   async upsert(lead){
     if(firestoreDB){
-      try {
-        // Use merge to avoid overwriting concurrent updates to other fields
-        await firestoreDB.collection('leads').doc(lead.id).set({ ...lead, updatedAt: Date.now() }, { merge: true });
-        return;
-      } catch(e){ console.error('lead upsert failed', e); }
+      try { await firestoreDB.collection('leads').doc(lead.id).set(lead); return; }
+      catch(e){ console.error('lead upsert failed', e); }
     }
     try {
-      // Merge with existing local entry instead of blindly replacing the whole array item
       const raw = localStorage.getItem(LEADS_LOCAL_KEY);
       const arr = raw ? JSON.parse(raw) : [];
       const idx = arr.findIndex(l=>l.id===lead.id);
-      if(idx>=0) arr[idx] = { ...arr[idx], ...lead, updatedAt: Date.now() };
-      else arr.push({ ...lead, updatedAt: Date.now() });
+      if(idx>=0) arr[idx] = lead; else arr.push(lead);
       localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(arr));
     } catch(e){}
   },
@@ -406,9 +401,11 @@ function App(){
   const [syncing, setSyncing] = useState(false);
   const [excludedPhones, setExcludedPhones] = useState([]);
   const [dashFilter, setDashFilter] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragId, setDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
   const [savedFlash, setSavedFlash] = useState("");
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -453,6 +450,24 @@ function App(){
   async function persistCourses(next){ setCourses(next); try { await Storage.set('crm-courses', JSON.stringify(next)); } catch(e){} }
   async function persistSettings(next){ setSettings(next); try { await Storage.set('crm-settings', JSON.stringify(next)); } catch(e){} }
 
+  function toggleLeadSelection(id){
+    setSelectedLeadIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function toggleSelectAllLeads(rows){
+    const ids = rows.map(r => r.id);
+    const allSelected = ids.length > 0 && ids.every(id => selectedLeadIds.includes(id));
+    setSelectedLeadIds(prev => allSelected ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
+  }
+
+  function deleteSelectedLeads(){
+    if(selectedLeadIds.length === 0) return;
+    if(!window.confirm(`Delete ${selectedLeadIds.length} selected lead${selectedLeadIds.length > 1 ? 's' : ''}?`)) return;
+    const next = leads.filter(l => !selectedLeadIds.includes(l.id));
+    persistLeads(next);
+    setSelectedLeadIds([]);
+  }
+
   function openDrawer(lead){
     setDrawerLead({...lead});
     setDrawerTab("history");
@@ -479,6 +494,37 @@ function App(){
       Storage.set('crm-excluded-phones', JSON.stringify(nextExcluded));
     }
     setDrawerLead(null);
+  }
+
+  function toggleSelect(id){
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if(next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(rows){
+    setSelectedIds(prev => {
+      const allSelected = rows.length > 0 && rows.every(r => prev.has(r.id));
+      if(allSelected) return new Set();
+      return new Set(rows.map(r => r.id));
+    });
+  }
+
+  function bulkDeleteSelected(){
+    if(selectedIds.size === 0) return;
+    const ok = window.confirm(`Delete ${selectedIds.size} selected lead${selectedIds.size>1?'s':''}? This can't be undone.`);
+    if(!ok) return;
+    const toDelete = leads.filter(l => selectedIds.has(l.id));
+    const phonesToExclude = toDelete.map(l => (l.phone||"").replace(/\D/g,'')).filter(Boolean);
+    persistLeads(leads.filter(l => !selectedIds.has(l.id)));
+    if(phonesToExclude.length){
+      const nextExcluded = [...new Set([...excludedPhones, ...phonesToExclude])];
+      setExcludedPhones(nextExcluded);
+      Storage.set('crm-excluded-phones', JSON.stringify(nextExcluded));
+    }
+    setSelectedIds(new Set());
   }
 
   function logFollowup(){
@@ -792,6 +838,13 @@ function App(){
                     {settings.statuses.map(s=><option key={s}>{s}</option>)}
                   </select>
                   {dashFilter && <button className="btn-ghost" onClick={()=>setDashFilter(null)}>Clear filter</button>}
+                  {selectedIds.size > 0 && (
+                    <React.Fragment>
+                      <span style={{fontSize:'12.5px', color:'var(--ink-soft)', alignSelf:'center'}}>{selectedIds.size} selected</span>
+                      <button className="btn-danger-ghost" onClick={bulkDeleteSelected}>Delete selected</button>
+                      <button className="btn-ghost" onClick={()=>setSelectedIds(new Set())}>Clear selection</button>
+                    </React.Fragment>
+                  )}
                 </div>
                 <div style={{display:'flex', gap:'8px'}}>
                   <button className="btn-ghost" onClick={()=>downloadCSV(toCSV(filteredLeads), 'leads-export.csv')}>Export CSV</button>
@@ -799,7 +852,10 @@ function App(){
                 </div>
               </div>
 
-              <div className="card"><div className="card-body" style={{padding:0}}><LeadsTable rows={filteredLeads} sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} openDrawer={openDrawer} /></div></div>
+              <div className="card"><div className="card-body" style={{padding:0}}>
+                <LeadsTable rows={filteredLeads} sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort} openDrawer={openDrawer}
+                  selectable={true} selectedIds={selectedIds} toggleSelect={toggleSelect} toggleSelectAll={toggleSelectAll} />
+              </div></div>
             </React.Fragment>
           )}
 
@@ -1001,12 +1057,14 @@ function NotesEditor({ lead, onSave }){
   }
 
 
-function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer }){
+function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer, selectable, selectedIds, toggleSelect, toggleSelectAll }){
     if(rows.length===0) return <div className="empty">No leads match this view.</div>;
     const Th = ({k, children}) => <th onClick={()=>toggleSort(k)}>{children}{sortKey===k ? (sortDir==="asc"?" ▲":" ▼") : ""}</th>;
+    const allSelected = selectable && rows.length>0 && rows.every(r => selectedIds && selectedIds.has(r.id));
     return (
       <table className="t">
         <thead><tr>
+          {selectable && <th style={{width:'32px'}}><input type="checkbox" checked={allSelected} onChange={()=>toggleSelectAll(rows)} /></th>}
           <Th k="name">Lead</Th><Th k="course">Course</Th><Th k="status">Status</Th><Th k="temp">Interest</Th><Th k="nextFollowUp">Next Follow-up</Th><Th k="admissionStatus">Admission</Th>
         </tr></thead>
         <tbody>
@@ -1014,6 +1072,11 @@ function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer }){
             const isOverdue = l.nextFollowUp && l.nextFollowUp<todayStr() && l.status!=="Admitted" && l.status!=="Lost";
             return (
               <tr className="row" key={l.id} onClick={()=>openDrawer(l)}>
+                {selectable && (
+                  <td onClick={(e)=>e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds ? selectedIds.has(l.id) : false} onChange={()=>toggleSelect(l.id)} />
+                  </td>
+                )}
                 <td><div style={{fontWeight:700}}>{l.name}</div><div style={{fontSize:'11.5px', color:'var(--ink-soft)'}}>{l.phone||"—"}</div></td>
                 <td>{l.course||"—"}</td>
                 <td><span className={"badge "+statusClass(l.status)}>{l.status}</span></td>
