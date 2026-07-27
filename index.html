@@ -179,7 +179,6 @@
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
 
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ivQViYg2nYlR9II5D9BocRs-KdxPhm_ZXEwdAenOvvA/edit?usp=sharing";
 
 const SEED_LEADS = [{"id": "LEAD-0001", "createdDate": "2026-07-12", "name": "Sanjog Paudel", "phone": "9821189569, 9863460979", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is currently busy, need to contact after 5pm, or will contact when he is free", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0002", "createdDate": "2026-06-02", "name": "Krish", "phone": "9807687258", "email": "shatishkumarsah954@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0003", "createdDate": "2026-07-17", "name": "Aayush Kaphle", "phone": "9818253791", "email": "akblox467@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "incomming call blocked", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0004", "createdDate": "2026-07-20", "name": "Manashi Ghimire", "phone": "9818077855", "email": "manashighimire7@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0005", "createdDate": "2026-07-12", "name": "Rishi Pawar", "phone": "9810329090", "email": "khadkarishu9@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "might join after 2-3 months", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0006", "createdDate": "2026-06-29", "name": "Eben kaliraj", "phone": "9713056767", "email": "Ben4ya67@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will join next year", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0007", "createdDate": "2026-07-08", "name": "dipika sah", "phone": "981, 3026692", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is currently busy, will visit in her free time", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0008", "createdDate": "2026-07-12", "name": "Swostika Dulal", "phone": "9847754685", "email": "Swostikdulal400@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Aptitude Test", "temp": "Hot", "nextFollowUp": "2026-07-30", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "she has consult with her parents, told her to join later after 2-3 months", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0009", "createdDate": "2026-07-12", "name": "Rabi Kishor Sah", "phone": "9744630212, 9707363330", "email": "rabisah2077@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "due to rainfall couldnot return to ktm, will consult with his brother for online counselling ", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0010", "createdDate": "2026-07-07", "name": "Nityahh Shrestha", "phone": "9813039339", "email": "nityahhshrestha005@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not decided yet, need some time to decide", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0011", "createdDate": "2026-07-19", "name": "Sakila", "phone": "9822928134", "email": "sakmand19@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "haven't been able to make time yet. she will visit soon", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0012", "createdDate": "2026-07-05", "name": "Prashant Bhatta", "phone": "9763618727", "email": "", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0013", "createdDate": "2026-06-21", "name": "Sheakh Ilhak", "phone": "9810097979", "email": "ilhaksheakh@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-29", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "for fsd, still out of valley, need physical session will visit after returning ktm, might be next week", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0014", "createdDate": "2026-06-21", "name": "Pranish Shakya", "phone": "9818345044", "email": "pranishshaya86@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "joined another institute", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0015", "createdDate": "2026-07-07", "name": "Bhairab kumar Shrestha", "phone": "9851009915", "email": "bhairab_nepal35@yahoo.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-25", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "was asking about the free course, will visit sunday around 12pm", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0016", "createdDate": "2026-07-12", "name": "Prazol!!", "phone": "9744575504", "email": "Mallaprajwol7@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call received by an unknown person, he was saying that he found this phone", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0017", "createdDate": "2026-07-02", "name": "Sunil Adhikari", "phone": "9851026057", "email": "sunil.adhikari.ca@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0018", "createdDate": "2026-06-29", "name": "Ajaj Ali", "phone": "9840956599", "email": "azaz.ali1974@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0019", "createdDate": "2026-07-06", "name": "Shanti Poudel", "phone": "9841031340", "email": "shanti.poudel@nsbl.com.np", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0020", "createdDate": "2026-07-05", "name": "Smith Santos", "phone": "9851364476", "email": "Smith Santos", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0021", "createdDate": "2026-06-21", "name": "Dipesh Adhikari", "phone": "9810027141", "email": "maskachhetri11@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0022", "createdDate": "2026-06-26", "name": "Alisha Moktan", "phone": "9765158607", "email": "alishamoktan24@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is busy, contact later", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0023", "createdDate": "2026-07-05", "name": "Suman Khatri", "phone": "9849980206", "email": "Suman Khatri", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "cut the call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0024", "createdDate": "2026-07-05", "name": "Sanjay L. Tamang", "phone": "9742873076", "email": "Sanjay L. Tamang", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0025", "createdDate": "2026-07-08", "name": "Niraula Kabita", "phone": "9869562261", "email": "niraulakabita98@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-30", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "master completed, is out of valley, will return ktm after 4-5 days and will visit", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0026", "createdDate": "2026-06-29", "name": "Sarbastha", "phone": "9845647405", "email": "akxhitbhandari59@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "switched off", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0027", "createdDate": "2026-07-10", "name": "Denal Dukpa Nuppa", "phone": "9861796382", "email": "Denaldukpanuppa@gmail.com", "college": "", "city": "", "source": "Other", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "switched off", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0028", "createdDate": "2026-07-14", "name": "Pra Yan Chirag", "phone": "9860803679", "email": "chiragyadav9818@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Hot", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "decided not to join for now, if he change his mind he will visit and join the course", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0029", "createdDate": "2026-07-16", "name": "K\u00e4ushal Koirala", "phone": "9843722473", "email": "kaushalkoirala75@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0030", "createdDate": "2026-07-14", "name": "Chanda Shrestha", "phone": "984, 1345757", "email": "chandashr@yahoo.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0031", "createdDate": "2026-07-21", "name": "Rupa Shrestha", "phone": "9802355008", "email": "", "college": "", "city": "", "source": "Phone Inquiry", "course": "FUTURZ", "fee": null, "status": "Crash Course", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is busy, need to contatc later", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0032", "createdDate": "2026-07-19", "name": "\u0645\u062d\u0645\u062f \u0627\u0633\u062f \u0627\u0646\u0635\u0627\u0631\u06cc", "phone": "9805572315", "email": "comradeasadansari@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Hot", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "12 grade, just for an inquiry, will join after his plus 2", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0033", "createdDate": "2026-06-30", "name": "Nan Ji", "phone": "9804594541", "email": "Nan Ji", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is outside, need to contact after an hour", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0034", "createdDate": "2026-07-02", "name": "Anju Chettri", "phone": "9743257766, 9705293515", "email": "anjuchhetri44@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-09-01", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "join accounting class, it will be 3 months course, will join after completing this course", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0035", "createdDate": "2026-06-28", "name": "Prashant Lumre Magar", "phone": "9709797144", "email": "mprasant148@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will visit sunday around 12-1pm", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0036", "createdDate": "2026-07-07", "name": "Roopesh Shrestha", "phone": "9801067046", "email": "comewhitehouse@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0037", "createdDate": "2026-07-03", "name": "Sukant Kumar Sshu", "phone": "9860906424", "email": "sukantmb@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0038", "createdDate": "2026-06-29", "name": "Mijal", "phone": "9849783702", "email": "mijalcreator@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0039", "createdDate": "2026-07-13", "name": "Gaurav Singh", "phone": "9826854508", "email": "gauravsinghroacj@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0040", "createdDate": "2026-07-05", "name": "Jake basnet", "phone": "9851403755", "email": "Jake basnet", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0041", "createdDate": "2026-07-13", "name": "Puspa Yadav", "phone": "9811104760", "email": "pushpayadav61551@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call rec but didn't talk and cut the call in the middle of the talk", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0042", "createdDate": "2026-06-02", "name": "Rashu Laspacha Mukhiya", "phone": "9813269267", "email": "monymukhiya@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "need to contact after an hour", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0043", "createdDate": "2026-07-13", "name": "Ofcx Stoner \u304e", "phone": "9823186276", "email": "tmgsusan881@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "due to his busy schedule wont join for now", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0044", "createdDate": "2026-07-12", "name": "Rubin Rai", "phone": "9802762731", "email": "rairubin980@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "is outside, share course details", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0045", "createdDate": "2026-07-13", "name": "Basant_Khanal", "phone": "9800749714", "email": "me.basantkhanal07@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "lost", "temp": "Warm", "nextFollowUp": "2026-07-23", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "need internship only", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0046", "createdDate": "2026-06-29", "name": "Mahesh Pathak", "phone": "9817692421", "email": "maheshpathak81@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0047", "createdDate": "2026-07-08", "name": "Mahesh Giri", "phone": "9869344443", "email": "maheshgiri2051@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Hot", "nextFollowUp": "2026-07-27", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will return ktm on sunday and will visit ", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0048", "createdDate": "2026-07-12", "name": "Rajan", "phone": "9827702102", "email": "rajancng2@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Counseling", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0049", "createdDate": "2026-06-25", "name": "Om Singh", "phone": "981, 0539715", "email": "oms182919@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0050", "createdDate": "2026-07-15", "name": "it's me__Nandanirani", "phone": "9820031798", "email": "guptanandani484@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "FUTURZ", "fee": null, "status": "Contacted", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "busy call", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0051", "createdDate": "2026-07-24", "name": "\u0928\u093f\u0930\u093e\u091c\u0928 \u092c\u0928\u0930\u0948\u0924 \u092f\u093e\u0926\u092c", "phone": "9779816447176", "email": "yaduwanshiniranjan124@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "not reachable", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0052", "createdDate": "2026-07-24", "name": "Bishnu Lama", "phone": "9779741687027", "email": "bishnumoktan745@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "will visit sunday or monday", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0053", "createdDate": "2026-07-24", "name": "Suzan Pandey", "phone": "9779843683654", "email": "sujanpandey747@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0054", "createdDate": "2026-07-24", "name": "Biken Shahi", "phone": "97709813921194", "email": "bikenshahi88@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0055", "createdDate": "2026-07-24", "name": "Rafin shrestha", "phone": "9779861149886", "email": "rafinshrestha2@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Hot", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "From kalanki, will try to visit on sunday or monday, share course details", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0056", "createdDate": "2026-07-24", "name": "Lumi Shrestha", "phone": "9779849707586", "email": "luminashrestha2003@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}, {"id": "LEAD-0057", "createdDate": "2026-07-24", "name": "Aakriti Shrestha", "phone": "9779840929273", "email": "aakritistha0927@gmail.com", "college": "", "city": "", "source": "Facebook", "course": "", "fee": null, "status": "Follow Up", "temp": "Warm", "nextFollowUp": "2026-07-26", "admissionStatus": "Pending", "admissionDate": null, "remarks": [{"date": "2026-07-24", "text": "call not rec", "type": "Call"}], "notes": [], "tags": []}];
 
@@ -325,6 +324,68 @@ const Storage = {
   }
 };
 
+const LEADS_LOCAL_KEY = 'dursikshya_crm_leads_collection';
+
+const LeadsStore = {
+  subscribe(onChange){
+    if(firestoreDB){
+      return firestoreDB.collection('leads').onSnapshot(snap => {
+        onChange(snap.docs.map(d => d.data()));
+      }, (e) => console.error('leads subscribe error', e));
+    }
+    try {
+      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
+      onChange(raw ? JSON.parse(raw) : null);
+    } catch(e){ onChange(null); }
+    return () => {};
+  },
+  async upsert(lead){
+    if(firestoreDB){
+      try {
+        // Use merge to avoid overwriting concurrent updates to other fields
+        await firestoreDB.collection('leads').doc(lead.id).set({ ...lead, updatedAt: Date.now() }, { merge: true });
+        return;
+      } catch(e){ console.error('lead upsert failed', e); }
+    }
+    try {
+      // Merge with existing local entry instead of blindly replacing the whole array item
+      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      const idx = arr.findIndex(l=>l.id===lead.id);
+      if(idx>=0) arr[idx] = { ...arr[idx], ...lead, updatedAt: Date.now() };
+      else arr.push({ ...lead, updatedAt: Date.now() });
+      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(arr));
+    } catch(e){}
+  },
+  async remove(id){
+    if(firestoreDB){
+      try { await firestoreDB.collection('leads').doc(id).delete(); return; }
+      catch(e){ console.error('lead remove failed', e); }
+    }
+    try {
+      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(arr.filter(l=>l.id!==id)));
+    } catch(e){}
+  },
+  async seedIfEmpty(seedArray){
+    if(firestoreDB){
+      try {
+        const snap = await firestoreDB.collection('leads').limit(1).get();
+        if(snap.empty){
+          const batch = firestoreDB.batch();
+          seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
+          await batch.commit();
+        }
+      } catch(e){ console.error('lead seed failed', e); }
+    } else {
+      try {
+        if(!localStorage.getItem(LEADS_LOCAL_KEY)) localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(seedArray));
+      } catch(e){}
+    }
+  }
+};
+
 function App(){
   const [leads, setLeads] = useState(null);
   const [courses, setCourses] = useState(DEFAULT_COURSES);
@@ -340,9 +401,10 @@ function App(){
   const [newFollowup, setNewFollowup] = useState({ text:"", type:"Call", nextFollowUp:"", status:"", temp:"", course:"" });
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
-  const [sheetUrl, setSheetUrl] = useState(DEFAULT_SHEET_URL);
+  const [sheetUrl, setSheetUrl] = useState("");
   const [syncMsg, setSyncMsg] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [excludedPhones, setExcludedPhones] = useState([]);
   const [dashFilter, setDashFilter] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
@@ -350,11 +412,7 @@ function App(){
 
   useEffect(() => {
     (async () => {
-      try {
-        const res = await Storage.get('crm-leads');
-        if(res){ setLeads(JSON.parse(res.value)); }
-        else { setLeads(SEED_LEADS); await Storage.set('crm-leads', JSON.stringify(SEED_LEADS)); }
-      } catch(e){ setLeads(SEED_LEADS); }
+      await LeadsStore.seedIfEmpty(SEED_LEADS);
       try {
         const c = await Storage.get('crm-courses');
         if(c) setCourses(JSON.parse(c.value));
@@ -366,21 +424,32 @@ function App(){
         else await Storage.set('crm-settings', JSON.stringify(DEFAULT_SETTINGS));
       } catch(e){}
       try {
-        const u = await Storage.get('crm-sheet-url');
-        if(u && u.value) setSheetUrl(u.value);
+        const ex = await Storage.get('crm-excluded-phones');
+        if(ex && ex.value) setExcludedPhones(JSON.parse(ex.value));
       } catch(e){}
-      setLoading(false);
     })();
   }, []);
 
   useEffect(() => {
-    const unsub = Storage.subscribe('crm-leads', (value) => {
-      try { setLeads(JSON.parse(value)); } catch(e){}
+    const unsub = LeadsStore.subscribe((arr) => {
+      if(arr){ setLeads(arr); }
+      setLoading(false);
     });
     return () => { if(typeof unsub === 'function') unsub(); };
   }, []);
 
-  async function persistLeads(next){ setLeads(next); try { await Storage.set('crm-leads', JSON.stringify(next)); } catch(e){} }
+  async function persistLeads(next){
+    const prevMap = new Map((leads||[]).map(l => [l.id, l]));
+    const nextMap = new Map(next.map(l => [l.id, l]));
+    setLeads(next);
+    const ops = [];
+    nextMap.forEach((lead, id) => {
+      const prev = prevMap.get(id);
+      if(!prev || JSON.stringify(prev) !== JSON.stringify(lead)) ops.push(LeadsStore.upsert(lead));
+    });
+    prevMap.forEach((lead, id) => { if(!nextMap.has(id)) ops.push(LeadsStore.remove(id)); });
+    try { await Promise.all(ops); } catch(e){ console.error('persistLeads failed', e); }
+  }
   async function persistCourses(next){ setCourses(next); try { await Storage.set('crm-courses', JSON.stringify(next)); } catch(e){} }
   async function persistSettings(next){ setSettings(next); try { await Storage.set('crm-settings', JSON.stringify(next)); } catch(e){} }
 
@@ -402,7 +471,13 @@ function App(){
     setDrawerLead(null);
   }
   function deleteDrawerLead(){
+    const phoneDigits = (drawerLead.phone||"").replace(/\D/g,'');
     persistLeads(leads.filter(l=>l.id!==drawerLead.id));
+    if(phoneDigits){
+      const nextExcluded = [...new Set([...excludedPhones, phoneDigits])];
+      setExcludedPhones(nextExcluded);
+      Storage.set('crm-excluded-phones', JSON.stringify(nextExcluded));
+    }
     setDrawerLead(null);
   }
 
@@ -426,16 +501,8 @@ function App(){
     setTimeout(()=>setSavedFlash(""), 2500);
   }
 
-  useEffect(() => {
-    if(!loading && leads && sheetUrl){
-      syncFromSheet();
-    }
-    // eslint-disable-next-line
-  }, [loading]);
-
-  async function saveSheetUrl(url){
+  function saveSheetUrl(url){
     setSheetUrl(url);
-    try { await Storage.set('crm-sheet-url', url); } catch(e){}
   }
 
   async function syncFromSheet(){
@@ -453,13 +520,14 @@ function App(){
         rows = mapCSVToLeads(text);
       }
       const existingPhones = new Set(leads.map(l => (l.phone||"").replace(/\D/g,'')));
+      const excludedSet = new Set(excludedPhones);
       const additions = [];
       rows.forEach(r => {
         const name = r.name || r.Name || "";
         if(!name) return;
         const phone = String(r.phone || r.Phone || "").trim();
         const phoneDigits = phone.replace(/\D/g,'');
-        if(phoneDigits && existingPhones.has(phoneDigits)) return;
+        if(phoneDigits && (existingPhones.has(phoneDigits) || excludedSet.has(phoneDigits))) return;
         additions.push({
           id: uid('LEAD-'), createdDate: todayStr(), name, phone, email: r.email || r.Email || "",
           college:"", city:"", source:"Sheet sync", course: courses[0] ? courses[0].name : "", fee: courses[0] ? courses[0].fee : "",
