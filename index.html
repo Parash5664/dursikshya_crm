@@ -164,12 +164,47 @@
   .add-row { display:flex; gap:6px; margin-top:8px; }
   .add-row input { flex:1; }
 
+  .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table-wrap table { min-width:700px; }
+
   @media (max-width: 1000px) {
     .kpi-grid { grid-template-columns: repeat(2,1fr); }
     .grid-2 { grid-template-columns: 1fr; }
     .sidebar { width:64px; }
     .sidebar .nav-item span.label { display:none; }
     .brand .sub, .brand-text { display:none; }
+  }
+
+  @media (max-width: 780px) {
+    body { font-size:13px; overflow-x:hidden; }
+    .shell { flex-direction:column; }
+    .sidebar { width:100%; flex-direction:row; align-items:center; justify-content:space-between; overflow-x:auto; padding:8px 10px; gap:6px; }
+    .sidebar .brand { display:none; }
+    .nav { padding:0; flex-direction:row; gap:6px; overflow-x:auto; }
+    .nav-item { white-space:nowrap; padding:8px 10px; }
+    .main { width:100%; }
+    .topbar { padding:14px 16px; flex-direction:column; align-items:flex-start; gap:6px; }
+    .content { padding:16px; }
+    .kpi-grid { grid-template-columns:1fr 1fr; gap:10px; }
+    .toolbar { flex-direction:column; align-items:stretch; }
+    .toolbar .left, .toolbar .right { width:100%; display:flex; flex-wrap:wrap; gap:8px; }
+    .row2, .row3, .settings-grid, .courses-grid { grid-template-columns:1fr; }
+    .drawer { width:100vw; max-width:100vw; }
+    .dbody { padding:16px; }
+    .confirm-box { margin:0 10px; }
+    .kanban { padding-bottom:12px; }
+    .kcol { min-width:min(84vw, 230px); width:min(84vw, 230px); }
+    .bar-row .label { width:96px; }
+  }
+
+  @media (max-width: 560px) {
+    .kpi-grid { grid-template-columns:1fr; }
+    .topbar h1 { font-size:16px; }
+    .content { padding:12px 12px 40px; }
+    .btn, .btn-ghost, .btn-danger, .btn-danger-ghost { width:100%; justify-content:center; }
+    .toolbar .left, .toolbar .right { flex-direction:column; }
+    .import-row { flex-direction:column; align-items:flex-start; gap:8px; }
+    .confirm-actions { flex-direction:column-reverse; }
   }
 </style>
 
@@ -348,16 +383,22 @@ function normalizeLeadSnapshot(value){
 
 const LeadsStore = {
   subscribe(onChange){
+    const emitLocal = () => {
+      try {
+        onChange(readStoredLeads() || []);
+      } catch(e){ onChange([]); }
+    };
     if(firestoreDB){
       return firestoreDB.collection('crm').doc(LEADS_STATE_DOC).onSnapshot(snap => {
         const snapshot = normalizeLeadSnapshot(snap.data()?.value);
         if(snapshot) onChange(snapshot);
-        else onChange(readStoredLeads());
-      }, (e) => console.error('leads subscribe error', e));
+        else emitLocal();
+      }, (e) => {
+        console.error('leads subscribe error', e);
+        emitLocal();
+      });
     }
-    try {
-      onChange(readStoredLeads());
-    } catch(e){ onChange(null); }
+    emitLocal();
     return () => {};
   },
   async saveAll(nextList){
@@ -384,33 +425,41 @@ const LeadsStore = {
     return this.saveAll(current.filter(l=>l.id!==id));
   },
   async seedOnceEver(seedArray){
-    if(firestoreDB){
-      try {
-        const flagDoc = await firestoreDB.collection('crm').doc('seed-status').get();
-        if(flagDoc.exists && flagDoc.data().seeded) return;
-        const existingSnap = await firestoreDB.collection('leads').limit(1).get();
-        if(!existingSnap.empty){
-          await firestoreDB.collection('crm').doc('seed-status').set({ seeded: true, seededAt: Date.now(), note: 'migrated-existing-data' });
-          return;
-        }
-        const batch = firestoreDB.batch();
-        seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
-        batch.set(firestoreDB.collection('crm').doc('seed-status'), { seeded: true, seededAt: Date.now() });
-        await batch.commit();
-      } catch(e){ console.error('lead seed failed', e); }
-    } else {
+    const seedLocal = () => {
       try {
         if(!localStorage.getItem('dursikshya_crm_seeded')){
           if(!localStorage.getItem(LEADS_LOCAL_KEY)) localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(seedArray));
           localStorage.setItem('dursikshya_crm_seeded', 'true');
         }
       } catch(e){}
+    };
+    if(firestoreDB){
+      try {
+        const flagDoc = await firestoreDB.collection('crm').doc('seed-status').get();
+        if(flagDoc.exists && flagDoc.data().seeded) {
+          seedLocal();
+          return;
+        }
+        const existingSnap = await firestoreDB.collection('leads').limit(1).get();
+        if(!existingSnap.empty){
+          await firestoreDB.collection('crm').doc('seed-status').set({ seeded: true, seededAt: Date.now(), note: 'migrated-existing-data' });
+          seedLocal();
+          return;
+        }
+        const batch = firestoreDB.batch();
+        seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
+        batch.set(firestoreDB.collection('crm').doc('seed-status'), { seeded: true, seededAt: Date.now() });
+        await batch.commit();
+        seedLocal();
+      } catch(e){ console.error('lead seed failed', e); seedLocal(); }
+    } else {
+      seedLocal();
     }
   }
 };
 
 function App(){
-  const [leads, setLeads] = useState(null);
+  const [leads, setLeads] = useState([]);
   const [courses, setCourses] = useState(DEFAULT_COURSES);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -457,7 +506,7 @@ function App(){
 
   useEffect(() => {
     const unsub = LeadsStore.subscribe((arr) => {
-      if(arr){ setLeads(arr); }
+      setLeads(Array.isArray(arr) ? arr : []);
       setLoading(false);
     });
     return () => { if(typeof unsub === 'function') unsub(); };
@@ -633,41 +682,39 @@ function App(){
     setImportText("");
   }
 
-  const dueToday = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp===todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
-  const dueTomorrow = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp===tomorrowStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
-  const overdue = useMemo(()=> !leads?[]:leads.filter(l=>l.nextFollowUp && l.nextFollowUp<todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [leads]);
-  const hot = useMemo(()=> !leads?[]:leads.filter(l=>l.temp==="Hot"), [leads]);
-  const cold = useMemo(()=> !leads?[]:leads.filter(l=>l.temp==="Cold"), [leads]);
-  const admittedThisMonth = useMemo(()=> !leads?[]:leads.filter(l=>l.status==="Admitted" && isThisMonth(l.admissionDate)), [leads]);
-  const admittedToday = useMemo(()=> !leads?[]:leads.filter(l=>l.status==="Admitted" && l.admissionDate===todayStr()), [leads]);
-  const pending = useMemo(()=> !leads?[]:leads.filter(l=>l.status!=="Admitted" && l.status!=="Lost"), [leads]);
+  const safeLeads = Array.isArray(leads) ? leads : [];
+  const dueToday = useMemo(()=> safeLeads.filter(l=>l.nextFollowUp===todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [safeLeads]);
+  const dueTomorrow = useMemo(()=> safeLeads.filter(l=>l.nextFollowUp===tomorrowStr() && l.status!=="Admitted" && l.status!=="Lost"), [safeLeads]);
+  const overdue = useMemo(()=> safeLeads.filter(l=>l.nextFollowUp && l.nextFollowUp<todayStr() && l.status!=="Admitted" && l.status!=="Lost"), [safeLeads]);
+  const hot = useMemo(()=> safeLeads.filter(l=>l.temp==="Hot"), [safeLeads]);
+  const cold = useMemo(()=> safeLeads.filter(l=>l.temp==="Cold"), [safeLeads]);
+  const admittedThisMonth = useMemo(()=> safeLeads.filter(l=>l.status==="Admitted" && isThisMonth(l.admissionDate)), [safeLeads]);
+  const admittedToday = useMemo(()=> safeLeads.filter(l=>l.status==="Admitted" && l.admissionDate===todayStr()), [safeLeads]);
+  const pending = useMemo(()=> safeLeads.filter(l=>l.status!=="Admitted" && l.status!=="Lost"), [safeLeads]);
   const conversionRate = useMemo(()=>{
-    if(!leads) return 0;
-    const closed = leads.filter(l=>l.status==="Admitted"||l.status==="Lost").length;
-    const admitted = leads.filter(l=>l.status==="Admitted").length;
+    const closed = safeLeads.filter(l=>l.status==="Admitted"||l.status==="Lost").length;
+    const admitted = safeLeads.filter(l=>l.status==="Admitted").length;
     return closed ? Math.round((admitted/closed)*100) : 0;
-  }, [leads]);
+  }, [safeLeads]);
   const revenueThisMonth = useMemo(()=>{
-    if(!leads) return 0;
     return admittedThisMonth.reduce((sum,l)=> sum + (Number(l.fee)||0), 0);
-  }, [leads, admittedThisMonth]);
+  }, [admittedThisMonth]);
 
   const courseCounts = useMemo(()=>{
     const c = {}; courses.forEach(cs=>c[cs.name]=0);
-    (leads||[]).forEach(l=>{ if(l.course) c[l.course]=(c[l.course]||0)+1; });
+    safeLeads.forEach(l=>{ if(l.course) c[l.course]=(c[l.course]||0)+1; });
     return c;
-  }, [leads, courses]);
+  }, [safeLeads, courses]);
   const sourceCounts = useMemo(()=>{
     const c = {};
-    (leads||[]).forEach(l=>{ const s=l.source||"Other"; c[s]=(c[s]||0)+1; });
+    safeLeads.forEach(l=>{ const s=l.source||"Other"; c[s]=(c[s]||0)+1; });
     return c;
-  }, [leads]);
+  }, [safeLeads]);
   const maxCourseCount = Math.max(1, ...Object.values(courseCounts));
   const maxSourceCount = Math.max(1, ...Object.values(sourceCounts));
 
   const filteredLeads = useMemo(() => {
-    if(!leads) return [];
-    let base = leads;
+    let base = safeLeads;
     if(dashFilter==="hot") base = hot;
     else if(dashFilter==="cold") base = cold;
     else if(dashFilter==="today") base = dueToday;
@@ -686,7 +733,7 @@ function App(){
       return sortDir==="asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
     return out;
-  }, [leads, search, statusFilter, sortKey, sortDir, dashFilter, hot, cold, dueToday, dueTomorrow, overdue, admittedThisMonth, pending]);
+  }, [safeLeads, search, statusFilter, sortKey, sortDir, dashFilter, hot, cold, dueToday, dueTomorrow, overdue, admittedThisMonth, pending]);
 
   function toggleSort(key){
     if(sortKey===key) setSortDir(sortDir==="asc"?"desc":"asc");
@@ -704,7 +751,7 @@ function App(){
   const NAV = [
     {id:"dashboard", label:"Dashboard"},
     {id:"kanban", label:"Pipeline (Kanban)"},
-    {id:"leads", label:"Leads", count: leads.length},
+    {id:"leads", label:"Leads", count: safeLeads.length},
     {id:"courses", label:"Courses"},
     {id:"settings", label:"Settings"},
   ];
@@ -733,7 +780,7 @@ function App(){
           {view==="dashboard" && (
             <React.Fragment>
               <div className="kpi-grid">
-                <div className="kpi accent-primary" onClick={()=>{setView("leads"); setDashFilter(null);}}><div className="kpi-label">Total Leads</div><div className="kpi-num">{leads.length}</div></div>
+                <div className="kpi accent-primary" onClick={()=>{setView("leads"); setDashFilter(null);}}><div className="kpi-label">Total Leads</div><div className="kpi-num">{safeLeads.length}</div></div>
                 <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("today");}}><div className="kpi-label">Today's Follow-ups</div><div className="kpi-num">{dueToday.length}</div></div>
                 <div className="kpi" onClick={()=>{setView("leads"); setDashFilter("tomorrow");}}><div className="kpi-label">Tomorrow's Follow-ups</div><div className="kpi-num">{dueTomorrow.length}</div></div>
                 <div className="kpi accent-danger" onClick={()=>{setView("leads"); setDashFilter("overdue");}}><div className="kpi-label">Overdue Follow-ups</div><div className="kpi-num">{overdue.length}</div></div>
@@ -785,7 +832,7 @@ function App(){
           {view==="kanban" && (
             <div className="kanban">
               {settings.statuses.map(st => {
-                const cardsInCol = leads.filter(l=>l.status===st);
+                const cardsInCol = safeLeads.filter(l=>l.status===st);
                 return (
                   <div key={st} className={"kcol"+(dragOverCol===st?" dragover":"")}
                        onDragOver={(e)=>{ e.preventDefault(); setDragOverCol(st); }}
@@ -1081,8 +1128,9 @@ function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer, selectable
     const Th = ({k, children}) => <th onClick={()=>toggleSort(k)}>{children}{sortKey===k ? (sortDir==="asc"?" ▲":" ▼") : ""}</th>;
     const allSelected = selectable && rows.length>0 && rows.every(r => selectedIds && selectedIds.has(r.id));
     return (
-      <table className="t">
-        <thead><tr>
+      <div className="table-wrap">
+        <table className="t">
+          <thead><tr>
           {selectable && <th style={{width:'32px'}}><input type="checkbox" checked={allSelected} onChange={()=>toggleSelectAll(rows)} /></th>}
           <Th k="name">Lead</Th><Th k="course">Course</Th><Th k="status">Status</Th><Th k="temp">Interest</Th><Th k="nextFollowUp">Next Follow-up</Th><Th k="admissionStatus">Admission</Th>
         </tr></thead>
@@ -1106,7 +1154,8 @@ function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer, selectable
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   }
 
