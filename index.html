@@ -88,6 +88,12 @@
   .btn-ghost { background:none; border:1px solid var(--line); color:var(--ink-soft); padding:9px 13px; border-radius:6px; font-size:13px; cursor:pointer; }
   .btn-ghost:hover { border-color:var(--primary); color:var(--primary); }
   .btn-danger-ghost { background:none; border:1px solid var(--danger-soft); color:var(--danger); padding:9px 13px; border-radius:6px; font-size:13px; cursor:pointer; }
+  .btn-danger { background:var(--danger); color:#fff; border:none; padding:9px 15px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer; }
+  .btn-danger:hover { background:#B91C1C; }
+  .confirm-overlay { position:fixed; inset:0; background:rgba(15,15,35,0.45); z-index:80; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .confirm-box { background:var(--surface); border-radius:10px; padding:22px 24px; max-width:380px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.2); }
+  .confirm-msg { font-size:14px; margin-bottom:18px; line-height:1.4; }
+  .confirm-actions { display:flex; justify-content:flex-end; gap:10px; }
 
   .import-box { background:var(--surface); border:1px dashed #C9CBE8; border-radius:8px; padding:14px 16px; margin-bottom:16px; }
   .import-box h4 { margin:0 0 3px; font-size:13px; }
@@ -325,57 +331,79 @@ const Storage = {
 };
 
 const LEADS_LOCAL_KEY = 'dursikshya_crm_leads_collection';
+const LEADS_STATE_DOC = 'leads-state';
+
+function readStoredLeads(){
+  try {
+    const raw = localStorage.getItem(LEADS_LOCAL_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+
+function normalizeLeadSnapshot(value){
+  if(Array.isArray(value)) return value;
+  if(value && Array.isArray(value.value)) return value.value;
+  return null;
+}
 
 const LeadsStore = {
   subscribe(onChange){
     if(firestoreDB){
-      return firestoreDB.collection('leads').onSnapshot(snap => {
-        onChange(snap.docs.map(d => d.data()));
+      return firestoreDB.collection('crm').doc(LEADS_STATE_DOC).onSnapshot(snap => {
+        const snapshot = normalizeLeadSnapshot(snap.data()?.value);
+        if(snapshot) onChange(snapshot);
+        else onChange(readStoredLeads());
       }, (e) => console.error('leads subscribe error', e));
     }
     try {
-      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
-      onChange(raw ? JSON.parse(raw) : null);
+      onChange(readStoredLeads());
     } catch(e){ onChange(null); }
     return () => {};
   },
-  async upsert(lead){
-    if(firestoreDB){
-      try { await firestoreDB.collection('leads').doc(lead.id).set(lead); return; }
-      catch(e){ console.error('lead upsert failed', e); }
-    }
-    try {
-      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      const idx = arr.findIndex(l=>l.id===lead.id);
-      if(idx>=0) arr[idx] = lead; else arr.push(lead);
-      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(arr));
-    } catch(e){}
-  },
-  async remove(id){
-    if(firestoreDB){
-      try { await firestoreDB.collection('leads').doc(id).delete(); return; }
-      catch(e){ console.error('lead remove failed', e); }
-    }
-    try {
-      const raw = localStorage.getItem(LEADS_LOCAL_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(arr.filter(l=>l.id!==id)));
-    } catch(e){}
-  },
-  async seedIfEmpty(seedArray){
+  async saveAll(nextList){
+    const payload = (nextList||[]).map(l => ({ ...l }));
     if(firestoreDB){
       try {
-        const snap = await firestoreDB.collection('leads').limit(1).get();
-        if(snap.empty){
-          const batch = firestoreDB.batch();
-          seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
-          await batch.commit();
+        await firestoreDB.collection('crm').doc(LEADS_STATE_DOC).set({ value: payload, updatedAt: Date.now() });
+        return payload;
+      } catch(e){ console.error('lead save failed', e); }
+    }
+    try {
+      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(payload));
+      return payload;
+    } catch(e){ return payload; }
+  },
+  async upsert(lead){
+    const current = readStoredLeads() || [];
+    const idx = current.findIndex(l=>l.id===lead.id);
+    const next = idx >= 0 ? current.map(l=>l.id===lead.id ? lead : l) : [...current, lead];
+    return this.saveAll(next);
+  },
+  async remove(id){
+    const current = readStoredLeads() || [];
+    return this.saveAll(current.filter(l=>l.id!==id));
+  },
+  async seedOnceEver(seedArray){
+    if(firestoreDB){
+      try {
+        const flagDoc = await firestoreDB.collection('crm').doc('seed-status').get();
+        if(flagDoc.exists && flagDoc.data().seeded) return;
+        const existingSnap = await firestoreDB.collection('leads').limit(1).get();
+        if(!existingSnap.empty){
+          await firestoreDB.collection('crm').doc('seed-status').set({ seeded: true, seededAt: Date.now(), note: 'migrated-existing-data' });
+          return;
         }
+        const batch = firestoreDB.batch();
+        seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
+        batch.set(firestoreDB.collection('crm').doc('seed-status'), { seeded: true, seededAt: Date.now() });
+        await batch.commit();
       } catch(e){ console.error('lead seed failed', e); }
     } else {
       try {
-        if(!localStorage.getItem(LEADS_LOCAL_KEY)) localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(seedArray));
+        if(!localStorage.getItem('dursikshya_crm_seeded')){
+          if(!localStorage.getItem(LEADS_LOCAL_KEY)) localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(seedArray));
+          localStorage.setItem('dursikshya_crm_seeded', 'true');
+        }
       } catch(e){}
     }
   }
@@ -402,14 +430,14 @@ function App(){
   const [excludedPhones, setExcludedPhones] = useState([]);
   const [dashFilter, setDashFilter] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
   const [savedFlash, setSavedFlash] = useState("");
-  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
 
   useEffect(() => {
     (async () => {
-      await LeadsStore.seedIfEmpty(SEED_LEADS);
+      await LeadsStore.seedOnceEver(SEED_LEADS);
       try {
         const c = await Storage.get('crm-courses');
         if(c) setCourses(JSON.parse(c.value));
@@ -436,37 +464,12 @@ function App(){
   }, []);
 
   async function persistLeads(next){
-    const prevMap = new Map((leads||[]).map(l => [l.id, l]));
-    const nextMap = new Map(next.map(l => [l.id, l]));
-    setLeads(next);
-    const ops = [];
-    nextMap.forEach((lead, id) => {
-      const prev = prevMap.get(id);
-      if(!prev || JSON.stringify(prev) !== JSON.stringify(lead)) ops.push(LeadsStore.upsert(lead));
-    });
-    prevMap.forEach((lead, id) => { if(!nextMap.has(id)) ops.push(LeadsStore.remove(id)); });
-    try { await Promise.all(ops); } catch(e){ console.error('persistLeads failed', e); }
+    const normalized = (next||[]).map(l => ({ ...l }));
+    setLeads(normalized);
+    try { await LeadsStore.saveAll(normalized); } catch(e){ console.error('persistLeads failed', e); }
   }
   async function persistCourses(next){ setCourses(next); try { await Storage.set('crm-courses', JSON.stringify(next)); } catch(e){} }
   async function persistSettings(next){ setSettings(next); try { await Storage.set('crm-settings', JSON.stringify(next)); } catch(e){} }
-
-  function toggleLeadSelection(id){
-    setSelectedLeadIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  }
-
-  function toggleSelectAllLeads(rows){
-    const ids = rows.map(r => r.id);
-    const allSelected = ids.length > 0 && ids.every(id => selectedLeadIds.includes(id));
-    setSelectedLeadIds(prev => allSelected ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
-  }
-
-  function deleteSelectedLeads(){
-    if(selectedLeadIds.length === 0) return;
-    if(!window.confirm(`Delete ${selectedLeadIds.length} selected lead${selectedLeadIds.length > 1 ? 's' : ''}?`)) return;
-    const next = leads.filter(l => !selectedLeadIds.includes(l.id));
-    persistLeads(next);
-    setSelectedLeadIds([]);
-  }
 
   function openDrawer(lead){
     setDrawerLead({...lead});
@@ -514,17 +517,21 @@ function App(){
 
   function bulkDeleteSelected(){
     if(selectedIds.size === 0) return;
-    const ok = window.confirm(`Delete ${selectedIds.size} selected lead${selectedIds.size>1?'s':''}? This can't be undone.`);
-    if(!ok) return;
-    const toDelete = leads.filter(l => selectedIds.has(l.id));
-    const phonesToExclude = toDelete.map(l => (l.phone||"").replace(/\D/g,'')).filter(Boolean);
-    persistLeads(leads.filter(l => !selectedIds.has(l.id)));
-    if(phonesToExclude.length){
-      const nextExcluded = [...new Set([...excludedPhones, ...phonesToExclude])];
-      setExcludedPhones(nextExcluded);
-      Storage.set('crm-excluded-phones', JSON.stringify(nextExcluded));
-    }
-    setSelectedIds(new Set());
+    setConfirmDialog({
+      message: `Delete ${selectedIds.size} selected lead${selectedIds.size>1?'s':''}? This can't be undone.`,
+      onConfirm: () => {
+        const toDelete = leads.filter(l => selectedIds.has(l.id));
+        const phonesToExclude = toDelete.map(l => (l.phone||"").replace(/\D/g,'')).filter(Boolean);
+        persistLeads(leads.filter(l => !selectedIds.has(l.id)));
+        if(phonesToExclude.length){
+          const nextExcluded = [...new Set([...excludedPhones, ...phonesToExclude])];
+          setExcludedPhones(nextExcluded);
+          Storage.set('crm-excluded-phones', JSON.stringify(nextExcluded));
+        }
+        setSelectedIds(new Set());
+        setConfirmDialog(null);
+      }
+    });
   }
 
   function logFollowup(){
@@ -879,6 +886,18 @@ function App(){
           saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead}
           saveNotes={saveNotes} savedFlash={savedFlash}
         />
+      )}
+
+      {confirmDialog && (
+        <div className="confirm-overlay" onClick={(e)=>{ if(e.target.classList.contains('confirm-overlay')) setConfirmDialog(null); }}>
+          <div className="confirm-box">
+            <div className="confirm-msg">{confirmDialog.message}</div>
+            <div className="confirm-actions">
+              <button className="btn-ghost" onClick={()=>setConfirmDialog(null)}>Cancel</button>
+              <button className="btn-danger" onClick={confirmDialog.onConfirm}>Delete</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
