@@ -531,6 +531,7 @@ function App(){
   const [dragId, setDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
   const [savedFlash, setSavedFlash] = useState("");
+  const [followupError, setFollowupError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -648,13 +649,17 @@ function App(){
     });
   }
 
-  function logFollowup(){
-    if(!newFollowup.text.trim()) return;
+  async function logFollowup(){
+    if(!newFollowup.text.trim()){
+      setFollowupError("Enter a follow-up remark before saving.");
+      return;
+    }
+    setFollowupError("");
     const entry = { date: todayStr(), text: newFollowup.text.trim(), type: newFollowup.type, nextFollowUp: newFollowup.nextFollowUp, status: newFollowup.status, temp: newFollowup.temp, course: newFollowup.course };
     const c = courses.find(x=>x.name===newFollowup.course);
     const updated = { ...drawerLead, remarks: [entry, ...(drawerLead.remarks||[])], status: newFollowup.status, temp: newFollowup.temp, nextFollowUp: newFollowup.nextFollowUp, course: newFollowup.course, fee: c ? c.fee : drawerLead.fee };
     setDrawerLead(updated);
-    persistLeads(leads.map(l => l.id === updated.id ? updated : l));
+    await persistLeads(leads.map(l => l.id === updated.id ? updated : l));
     setNewFollowup({...newFollowup, text:""});
     setSavedFlash("Follow-up saved ✓");
     setTimeout(()=>setSavedFlash(""), 2500);
@@ -1009,7 +1014,7 @@ function App(){
           newFollowup={newFollowup} setNewFollowup={setNewFollowup}
           courseChange={courseChange} logFollowup={logFollowup}
           saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead} mergeDrawerInto={mergeDrawerInto}
-          saveNotes={saveNotes} savedFlash={savedFlash}
+          saveNotes={saveNotes} savedFlash={savedFlash} followupError={followupError}
         />
       )}
 
@@ -1028,7 +1033,7 @@ function App(){
   );
 }
 
-function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead, mergeDrawerInto, saveNotes, savedFlash }){
+function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead, mergeDrawerInto, saveNotes, savedFlash, followupError }){
   const dl = drawerLead;
     if(!dl) return null;
     const isNew = !leads.some(l=>l.id===dl.id);
@@ -1153,7 +1158,8 @@ function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, le
                     </div>
                   </div>
                   <label className="field-label">Remark — what was discussed on the call</label>
-                  <textarea value={newFollowup.text} onChange={e=>setNewFollowup({...newFollowup,text:e.target.value})} placeholder="What happened on this call?"></textarea>
+                  <textarea value={newFollowup.text} onChange={e=>{ setNewFollowup({...newFollowup,text:e.target.value}); if(followupError) setFollowupError(""); }} placeholder="What happened on this call?"></textarea>
+                  {followupError && <div style={{marginTop:'7px', color:'var(--danger)', fontSize:'12px', fontWeight:600}}>{followupError}</div>}
                   <div style={{marginTop:'8px', display:'flex', justifyContent:'flex-end'}}>
                     <button className="btn" onClick={logFollowup}>💾 Save follow-up</button>
                   </div>
