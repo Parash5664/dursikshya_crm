@@ -148,6 +148,11 @@
   .tl-text { font-size:13px; }
   .new-followup { background:var(--primary-soft); border-radius:8px; padding:14px; margin-top:6px; }
   .drawer-actions { display:flex; justify-content:space-between; margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+  .duplicate-warning { margin:0 0 18px; padding:12px; border:1px solid #FCD34D; border-radius:8px; background:#FFFBEB; color:#92400E; font-size:13px; }
+  .duplicate-warning strong { display:block; margin-bottom:5px; }
+  .duplicate-match { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:8px; margin-top:8px; border-top:1px solid #FDE68A; }
+  .duplicate-match:first-of-type { margin-top:0; }
+  .duplicate-match small { display:block; color:#A16207; margin-top:2px; }
 
   .courses-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:12px; }
   .course-card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
@@ -242,6 +247,49 @@ function isThisMonth(s){ if(!s) return false; const d=new Date(s+"T00:00:00"); c
 function fmtDate(d){ if(!d) return "—"; try { return new Date(d+"T00:00:00").toLocaleDateString('en-US',{month:'short',day:'numeric'}); } catch(e){ return d; } }
 function fmtMoney(n){ if(n===null||n===undefined||n==='') return "—"; return "NPR " + Number(n).toLocaleString(); }
 function uid(p){ return (p||'L') + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function phoneKeys(value){
+  const raw = String(value||"");
+  const keys = raw.split(/[,;|\/]+/).map(part => part.replace(/\D/g,'')).filter(Boolean);
+  const all = raw.replace(/\D/g,'');
+  if(all && all.length <= 13) keys.push(all);
+  return [...new Set(keys.map(key => key.length === 13 && key.startsWith('977') ? key.slice(3) : key).filter(key => key.length >= 7))];
+}
+function normalizeEmail(value){
+  const email = String(value||"").trim().toLowerCase();
+  return email.includes('@') ? email : "";
+}
+function normalizeName(value){ return String(value||"").toLowerCase().trim().replace(/[^\p{L}\p{N}]+/gu,''); }
+function findDuplicateMatches(candidate, pool, excludeId){
+  const phones = new Set(phoneKeys(candidate.phone));
+  const email = normalizeEmail(candidate.email);
+  const name = normalizeName(candidate.name);
+  return (pool||[]).filter(lead => lead.id !== excludeId).map(lead => {
+    const reasons = [];
+    if(phoneKeys(lead.phone).some(phone => phones.has(phone))) reasons.push('phone');
+    if(email && normalizeEmail(lead.email) === email) reasons.push('email');
+    if(name.length >= 3 && normalizeName(lead.name) === name) reasons.push('name');
+    return reasons.length ? { lead, reasons } : null;
+  }).filter(Boolean);
+}
+function combineContactValues(first, second){
+  return [...new Set([first, second].map(v => String(v||"").trim()).filter(Boolean))].join(', ');
+}
+function mergeLeadData(existing, incoming){
+  return {
+    ...existing,
+    phone: combineContactValues(existing.phone, incoming.phone),
+    email: combineContactValues(existing.email, incoming.email),
+    name: existing.name || incoming.name,
+    college: existing.college || incoming.college || "",
+    city: existing.city || incoming.city || "",
+    source: existing.source || incoming.source || "",
+    course: existing.course || incoming.course || "",
+    fee: existing.fee || incoming.fee || "",
+    remarks: [...(existing.remarks||[]), ...(incoming.remarks||[])],
+    notes: [...(existing.notes||[]), ...(incoming.notes||[])],
+    tags: [...new Set([...(existing.tags||[]), ...(incoming.tags||[])])]
+  };
+}
 function tempClass(t){ return t==="Hot" ? "b-hot" : t==="Warm" ? "b-warm" : t==="Cold" ? "b-cold" : "b-neutral"; }
 function statusClass(s){
   if(s==="Admitted") return "b-success";
@@ -532,10 +580,27 @@ function App(){
 
   function saveDrawer(){
     if(!drawerLead.name.trim()) return;
+    const duplicates = findDuplicateMatches(drawerLead, leads, drawerLead.id);
+    if(duplicates.length){
+      setSavedFlash("Duplicate found — choose Merge below.");
+      setTimeout(()=>setSavedFlash(""), 3000);
+      return;
+    }
     const exists = leads.some(l=>l.id===drawerLead.id);
     const next = exists ? leads.map(l=>l.id===drawerLead.id?drawerLead:l) : [...leads, drawerLead];
     persistLeads(next);
     setDrawerLead(null);
+  }
+  function mergeDrawerInto(existingId){
+    const existing = leads.find(l => l.id === existingId);
+    if(!existing || !drawerLead) return;
+    const merged = mergeLeadData(existing, drawerLead);
+    const next = leads.filter(l => l.id !== drawerLead.id).map(l => l.id === existingId ? merged : l);
+    persistLeads(next);
+    setDrawerLead(merged);
+    setDrawerTab("overview");
+    setSavedFlash("Leads merged ✓");
+    setTimeout(()=>setSavedFlash(""), 2500);
   }
   function deleteDrawerLead(){
     const phoneDigits = (drawerLead.phone||"").replace(/\D/g,'');
@@ -621,24 +686,25 @@ function App(){
         const text = await res.text();
         rows = mapCSVToLeads(text);
       }
-      const existingPhones = new Set(leads.map(l => (l.phone||"").replace(/\D/g,'')));
       const excludedSet = new Set(excludedPhones);
-      const additions = [];
+      let next = [...leads];
+      let added = 0, merged = 0;
       rows.forEach(r => {
         const name = r.name || r.Name || "";
         if(!name) return;
         const phone = String(r.phone || r.Phone || "").trim();
-        const phoneDigits = phone.replace(/\D/g,'');
-        if(phoneDigits && (existingPhones.has(phoneDigits) || excludedSet.has(phoneDigits))) return;
-        additions.push({
+        if(phoneKeys(phone).some(key => excludedSet.has(key))) return;
+        const incoming = {
           id: uid('LEAD-'), createdDate: todayStr(), name, phone, email: r.email || r.Email || "",
           college:"", city:"", source:"Sheet sync", course: courses[0] ? courses[0].name : "", fee: courses[0] ? courses[0].fee : "",
           status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
-        });
-        if(phoneDigits) existingPhones.add(phoneDigits);
+        };
+        const duplicate = findDuplicateMatches(incoming, next)[0];
+        if(duplicate){ next = next.map(l => l.id === duplicate.lead.id ? mergeLeadData(l, incoming) : l); merged++; }
+        else { next.push(incoming); added++; }
       });
-      if(additions.length){ persistLeads([...leads, ...additions]); }
-      setSyncMsg(additions.length ? `Synced ${additions.length} new lead${additions.length>1?'s':''}.` : "No new leads — you're up to date.");
+      if(added || merged) persistLeads(next);
+      setSyncMsg(added || merged ? `Synced ${added} new lead${added!==1?'s':''}${merged ? ` and merged ${merged} duplicate${merged!==1?'s':''}.` : '.'}` : "No new leads — you're up to date.");
     } catch(e){
       setSyncMsg("Couldn't reach that sheet. Make sure sharing is set to 'Anyone with the link'.");
     }
@@ -657,13 +723,19 @@ function App(){
     reader.onload = (evt) => {
       const rows = mapCSVToLeads(evt.target.result);
       if(rows.length === 0){ setImportMsg("No valid rows found in that file — make sure it has a Name column."); return; }
-      const additions = rows.map(r => ({
-        id: uid('LEAD-'), createdDate: todayStr(), name:r.name, phone:r.phone, email:r.email, college:"", city:"",
+      let next = [...leads], added = 0, merged = 0;
+      rows.forEach(r => {
+        const incoming = {
+          id: uid('LEAD-'), createdDate: todayStr(), name:r.name, phone:r.phone, email:r.email, college:"", city:"",
         source:"CSV upload", course: r.course || (courses[0]?courses[0].name:""), fee: courses.find(c=>c.name===r.course)?.fee || "",
-        status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
-      }));
-      persistLeads([...leads, ...additions]);
-      setImportMsg(`Imported ${additions.length} lead${additions.length>1?'s':''} from file.`);
+          status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
+        };
+        const duplicate = findDuplicateMatches(incoming, next)[0];
+        if(duplicate){ next = next.map(l => l.id === duplicate.lead.id ? mergeLeadData(l, incoming) : l); merged++; }
+        else { next.push(incoming); added++; }
+      });
+      persistLeads(next);
+      setImportMsg(`Imported ${added} lead${added!==1?'s':''}${merged ? ` and merged ${merged} duplicate${merged!==1?'s':''}` : ''} from file.`);
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -672,13 +744,19 @@ function App(){
   function runImport(){
     const rows = parseImportText(importText);
     if(rows.length===0){ setImportMsg("No valid rows found — each line needs at least a name."); return; }
-    const additions = rows.map(r => ({
+    let next = [...leads], added = 0, merged = 0;
+    rows.forEach(r => {
+      const incoming = {
       id: uid('LEAD-'), createdDate: todayStr(), name:r.name, phone:r.phone, email:r.email, college:"", city:"",
       source:"Sheet import", course: r.course || (courses[0]?courses[0].name:""), fee: courses.find(c=>c.name===r.course)?.fee || "",
       status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
-    }));
-    persistLeads([...leads, ...additions]);
-    setImportMsg(`Imported ${additions.length} lead${additions.length>1?'s':''}.`);
+      };
+      const duplicate = findDuplicateMatches(incoming, next)[0];
+      if(duplicate){ next = next.map(l => l.id === duplicate.lead.id ? mergeLeadData(l, incoming) : l); merged++; }
+      else { next.push(incoming); added++; }
+    });
+    persistLeads(next);
+    setImportMsg(`Imported ${added} lead${added!==1?'s':''}${merged ? ` and merged ${merged} duplicate${merged!==1?'s':''}` : ''}.`);
     setImportText("");
   }
 
@@ -930,7 +1008,7 @@ function App(){
           leads={leads} courses={courses} settings={settings}
           newFollowup={newFollowup} setNewFollowup={setNewFollowup}
           courseChange={courseChange} logFollowup={logFollowup}
-          saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead}
+          saveDrawer={saveDrawer} deleteDrawerLead={deleteDrawerLead} mergeDrawerInto={mergeDrawerInto}
           saveNotes={saveNotes} savedFlash={savedFlash}
         />
       )}
@@ -950,10 +1028,11 @@ function App(){
   );
 }
 
-function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead, saveNotes, savedFlash }){
+function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, leads, courses, settings, newFollowup, setNewFollowup, courseChange, logFollowup, saveDrawer, deleteDrawerLead, mergeDrawerInto, saveNotes, savedFlash }){
   const dl = drawerLead;
     if(!dl) return null;
     const isNew = !leads.some(l=>l.id===dl.id);
+    const duplicateMatches = findDuplicateMatches(dl, leads, dl.id);
     return (
       <div className="drawer-overlay" onClick={(e)=>{ if(e.target.classList.contains('drawer-overlay')) setDrawerLead(null); }}>
         <div className="drawer">
@@ -978,6 +1057,17 @@ function DrawerLeadForm({ drawerLead, setDrawerLead, drawerTab, setDrawerTab, le
           <div className="dbody">
             {drawerTab==="overview" && (
               <div>
+                {duplicateMatches.length > 0 && (
+                  <div className="duplicate-warning">
+                    <strong>Possible duplicate lead detected</strong>
+                    {duplicateMatches.map(({lead, reasons}) => (
+                      <div className="duplicate-match" key={lead.id}>
+                        <span>{lead.name} <small>{lead.phone || lead.email || lead.id} · same {reasons.join(', ')}</small></span>
+                        <button className="btn-ghost" onClick={()=>mergeDrawerInto(lead.id)}>Merge</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <label className="field-label">Name</label>
                 <input type="text" value={dl.name} onChange={e=>setDrawerLead({...dl,name:e.target.value})} placeholder="Full name" />
                 <div className="row2">
