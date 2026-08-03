@@ -219,6 +219,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
@@ -320,24 +321,41 @@ function parseCSVGrid(text){
   });
 }
 
-function mapCSVToLeads(text){
-  const grid = parseCSVGrid(text);
+function mapGridToLeads(grid){
   if(grid.length === 0) return [];
-  const headerRow = grid[0].map(h => h.toLowerCase().replace(/[.\s]/g,''));
-  const findCol = (keys) => headerRow.findIndex(h => keys.some(k => h.includes(k)));
-  const nameIdx = findCol(['name']);
-  const looksLikeHeader = nameIdx !== -1;
-  const phoneIdx = looksLikeHeader ? findCol(['phone','contact','mobile']) : 1;
-  const emailIdx = looksLikeHeader ? findCol(['email','mail']) : 2;
-  const courseIdx = looksLikeHeader ? findCol(['course']) : 3;
+  const cleanCell = value => String(value == null ? "" : value).trim();
+  const normalizeHeader = value => cleanCell(value).replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const headerRow = grid[0].map(normalizeHeader);
+  const findCol = (keys) => headerRow.findIndex(h => keys.some(k => h === k || h.includes(k)));
+  const nameHeaders = ['name','fullname','studentname','leadname','customername','contactname','applicantname'];
+  const phoneHeaders = ['phone','phonenumber','mobile','mobilenumber','contact','contactnumber','telephone','tel','whatsapp'];
+  const emailHeaders = ['email','emailaddress','mail'];
+  const courseHeaders = ['course','coursename','program','programme','interest'];
+  let nameIdx = findCol(nameHeaders);
+  let phoneIdx = findCol(phoneHeaders);
+  let emailIdx = findCol(emailHeaders);
+  let courseIdx = findCol(courseHeaders);
+  const looksLikeHeader = [nameIdx, phoneIdx, emailIdx, courseIdx].some(i => i !== -1);
   const dataRows = looksLikeHeader ? grid.slice(1) : grid;
-  const effectiveNameIdx = looksLikeHeader ? nameIdx : 0;
+  const columnCount = Math.max(0, ...grid.map(row => row.length));
+  const samples = Array.from({length:columnCount}, (_, col) => dataRows.slice(0,25).map(row => cleanCell(row[col])).filter(Boolean));
+  const phoneScore = values => values.filter(value => {
+    const digits = value.replace(/\D/g,'');
+    return digits.length >= 7 && digits.length <= 15 && !/[A-Za-z@]/.test(value);
+  }).length;
+  const nameScore = values => values.filter(value => /[A-Za-z\u00C0-\uFFFF]/.test(value) && !value.includes('@') && value.replace(/[^A-Za-z\u00C0-\uFFFF]/g,'').length >= 2).length;
+  if(phoneIdx === -1) phoneIdx = samples.reduce((best, values, idx) => phoneScore(values) > phoneScore(samples[best]||[]) ? idx : best, 0);
+  if(nameIdx === -1) nameIdx = samples.reduce((best, values, idx) => idx !== phoneIdx && nameScore(values) > nameScore(samples[best]||[]) ? idx : best, phoneIdx === 0 ? 1 : 0);
   return dataRows.map(r => ({
-    name: (r[effectiveNameIdx]||"").trim(),
-    phone: (phoneIdx>=0 ? r[phoneIdx] : "")||"",
-    email: (emailIdx>=0 ? r[emailIdx] : "")||"",
-    course: (courseIdx>=0 ? r[courseIdx] : "")||"",
+    name: cleanCell(r[nameIdx]),
+    phone: cleanCell(phoneIdx>=0 ? r[phoneIdx] : ""),
+    email: cleanCell(emailIdx>=0 ? r[emailIdx] : ""),
+    course: cleanCell(courseIdx>=0 ? r[courseIdx] : ""),
   })).filter(r => r.name);
+}
+
+function mapCSVToLeads(text){
+  return mapGridToLeads(parseCSVGrid(text));
 }
 
 function resolveSheetFetchTarget(url){
@@ -417,15 +435,7 @@ const Storage = {
   }
 };
 
-const LEADS_LOCAL_KEY = 'dursikshya_crm_leads_collection';
 const LEADS_STATE_DOC = 'leads-state';
-
-function readStoredLeads(){
-  try {
-    const raw = localStorage.getItem(LEADS_LOCAL_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e){ return null; }
-}
 
 function normalizeLeadSnapshot(value){
   if(Array.isArray(value)) return value;
@@ -435,78 +445,68 @@ function normalizeLeadSnapshot(value){
 
 const LeadsStore = {
   subscribe(onChange){
-    const emitLocal = () => {
-      try {
-        onChange(readStoredLeads() || []);
-      } catch(e){ onChange([]); }
-    };
-    if(firestoreDB){
-      return firestoreDB.collection('crm').doc(LEADS_STATE_DOC).onSnapshot(snap => {
-        const snapshot = normalizeLeadSnapshot(snap.data()?.value);
-        if(snapshot) onChange(snapshot);
-        else emitLocal();
-      }, (e) => {
-        console.error('leads subscribe error', e);
-        emitLocal();
-      });
+    if(!firestoreDB){
+      onChange([]);
+      return () => {};
     }
-    emitLocal();
-    return () => {};
+    return firestoreDB.collection('crm').doc(LEADS_STATE_DOC).onSnapshot(snap => {
+      const snapshot = normalizeLeadSnapshot(snap.data()?.value);
+      onChange(snapshot || []);
+    }, (e) => {
+      console.error('leads subscribe error', e);
+      onChange([]);
+    });
   },
   async saveAll(nextList){
     const payload = (nextList||[]).map(l => ({ ...l }));
-    if(firestoreDB){
-      try {
-        await firestoreDB.collection('crm').doc(LEADS_STATE_DOC).set({ value: payload, updatedAt: Date.now() });
-        return payload;
-      } catch(e){ console.error('lead save failed', e); }
+    if(!firestoreDB){
+      console.error('lead save skipped: Firestore unavailable');
+      return payload;
     }
     try {
-      localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(payload));
+      await firestoreDB.collection('crm').doc(LEADS_STATE_DOC).set({ value: payload, updatedAt: Date.now() });
       return payload;
-    } catch(e){ return payload; }
+    } catch(e){
+      console.error('lead save failed', e);
+      return payload;
+    }
   },
   async upsert(lead){
-    const current = readStoredLeads() || [];
+    const current = (await this.readAll()) || [];
     const idx = current.findIndex(l=>l.id===lead.id);
     const next = idx >= 0 ? current.map(l=>l.id===lead.id ? lead : l) : [...current, lead];
     return this.saveAll(next);
   },
   async remove(id){
-    const current = readStoredLeads() || [];
+    const current = (await this.readAll()) || [];
     return this.saveAll(current.filter(l=>l.id!==id));
   },
-  async seedOnceEver(seedArray){
-    const seedLocal = () => {
-      try {
-        if(!localStorage.getItem('dursikshya_crm_seeded')){
-          if(!localStorage.getItem(LEADS_LOCAL_KEY)) localStorage.setItem(LEADS_LOCAL_KEY, JSON.stringify(seedArray));
-          localStorage.setItem('dursikshya_crm_seeded', 'true');
-        }
-      } catch(e){}
-    };
-    if(firestoreDB){
-      try {
-        const flagDoc = await firestoreDB.collection('crm').doc('seed-status').get();
-        if(flagDoc.exists && flagDoc.data().seeded) {
-          seedLocal();
-          return;
-        }
-        const existingSnap = await firestoreDB.collection('leads').limit(1).get();
-        if(!existingSnap.empty){
-          await firestoreDB.collection('crm').doc('seed-status').set({ seeded: true, seededAt: Date.now(), note: 'migrated-existing-data' });
-          seedLocal();
-          return;
-        }
-        const batch = firestoreDB.batch();
-        seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
-        batch.set(firestoreDB.collection('crm').doc('seed-status'), { seeded: true, seededAt: Date.now() });
-        await batch.commit();
-        seedLocal();
-      } catch(e){ console.error('lead seed failed', e); seedLocal(); }
-    } else {
-      seedLocal();
+  async readAll(){
+    if(!firestoreDB) return [];
+    try {
+      const snap = await firestoreDB.collection('crm').doc(LEADS_STATE_DOC).get();
+      const snapshot = normalizeLeadSnapshot(snap.data()?.value);
+      return snapshot || [];
+    } catch(e){
+      console.error('lead read failed', e);
+      return [];
     }
+  },
+  async seedOnceEver(seedArray){
+    if(!firestoreDB) return;
+    try {
+      const flagDoc = await firestoreDB.collection('crm').doc('seed-status').get();
+      if(flagDoc.exists && flagDoc.data().seeded) return;
+      const existingSnap = await firestoreDB.collection('leads').limit(1).get();
+      if(!existingSnap.empty){
+        await firestoreDB.collection('crm').doc('seed-status').set({ seeded: true, seededAt: Date.now(), note: 'migrated-existing-data' });
+        return;
+      }
+      const batch = firestoreDB.batch();
+      seedArray.forEach(l => batch.set(firestoreDB.collection('leads').doc(l.id), l));
+      batch.set(firestoreDB.collection('crm').doc('seed-status'), { seeded: true, seededAt: Date.now() });
+      await batch.commit();
+    } catch(e){ console.error('lead seed failed', e); }
   }
 };
 
@@ -525,6 +525,7 @@ function App(){
   const [newFollowup, setNewFollowup] = useState({ text:"", type:"Call", nextFollowUp:"", status:"", temp:"", course:"" });
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
+  const [fileImportMsg, setFileImportMsg] = useState("");
   const [sheetUrl, setSheetUrl] = useState("");
   const [syncMsg, setSyncMsg] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -558,11 +559,34 @@ function App(){
   }, []);
 
   useEffect(() => {
-    const unsub = LeadsStore.subscribe((arr) => {
+    let cancelled = false;
+    const finish = (arr) => {
+      if(cancelled) return;
       setLeads(Array.isArray(arr) ? arr : []);
       setLoading(false);
-    });
-    return () => { if(typeof unsub === 'function') unsub(); };
+    };
+
+    finish([]);
+
+    (async () => {
+      try {
+        const initial = await Promise.race([
+          LeadsStore.readAll(),
+          new Promise(resolve => setTimeout(() => resolve([]), 1500))
+        ]);
+        finish(initial);
+      } catch(e){ finish([]); }
+
+      const unsub = LeadsStore.subscribe((arr) => finish(arr));
+      if(typeof unsub === 'function') {
+        return () => {
+          cancelled = true;
+          unsub();
+        };
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   async function persistLeads(next){
@@ -725,18 +749,36 @@ function App(){
     setDrawerLead({...drawerLead, course: courseName, fee: c ? c.fee : drawerLead.fee});
   }
 
-  function handleCSVFile(e){
+  function handleImportFile(e){
     const file = e.target.files[0];
     if(!file) return;
+    const extension = file.name.split('.').pop().toLowerCase();
+    if(!['csv','xlsx','xls'].includes(extension)){
+      setFileImportMsg("Choose a CSV or Excel file (.csv, .xlsx, or .xls).");
+      e.target.value = "";
+      return;
+    }
+    setFileImportMsg(`Reading ${file.name}…`);
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const rows = mapCSVToLeads(evt.target.result);
-      if(rows.length === 0){ setImportMsg("No valid rows found in that file — make sure it has a Name column."); return; }
+      try {
+        let rows;
+        if(extension === 'csv'){
+          const text = new TextDecoder('utf-8').decode(new Uint8Array(evt.target.result));
+          rows = mapCSVToLeads(text);
+        } else {
+          if(typeof XLSX === 'undefined') throw new Error('Excel reader did not load. Refresh the page and try again.');
+          const workbook = XLSX.read(evt.target.result, {type:'array'});
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          if(!firstSheet) throw new Error('The workbook has no readable sheets.');
+          rows = mapGridToLeads(XLSX.utils.sheet_to_json(firstSheet, {header:1, defval:"", raw:false}));
+        }
+        if(rows.length === 0) throw new Error("No valid rows found — make sure the first sheet has a Name column and data rows.");
       let next = [...leads], added = 0, merged = 0;
       rows.forEach(r => {
         const incoming = {
           id: uid('LEAD-'), createdDate: todayStr(), name:r.name, phone:r.phone, email:r.email, college:"", city:"",
-        source:"CSV upload", course: r.course || (courses[0]?courses[0].name:""), fee: courses.find(c=>c.name===r.course)?.fee || "",
+        source:`${extension === 'csv' ? 'CSV' : 'Excel'} upload`, course: r.course || (courses[0]?courses[0].name:""), fee: courses.find(c=>c.name===r.course)?.fee || "",
           status: settings.statuses[0]||"New", temp:"Warm", nextFollowUp:"", admissionStatus: settings.admissionStatuses[0]||"Pending", admissionDate:"", remarks:[], notes:[]
         };
         const duplicate = findDuplicateMatches(incoming, next)[0];
@@ -744,9 +786,13 @@ function App(){
         else { next.push(incoming); added++; }
       });
       persistLeads(next);
-      setImportMsg(`Imported ${added} lead${added!==1?'s':''}${merged ? ` and merged ${merged} duplicate${merged!==1?'s':''}` : ''} from file.`);
+      setFileImportMsg(`Imported ${added} lead${added!==1?'s':''}${merged ? ` and merged ${merged} duplicate${merged!==1?'s':''}` : ''} from file.`);
+      } catch(error){
+        setFileImportMsg(error.message || "Couldn't read that file. Check its format and try again.");
+      }
     };
-    reader.readAsText(file);
+    reader.onerror = () => setFileImportMsg("Couldn't read that file. Please try again.");
+    reader.readAsArrayBuffer(file);
     e.target.value = "";
   }
 
@@ -956,9 +1002,10 @@ function App(){
               </div>
 
               <div className="import-box">
-                <h4>Upload a CSV file</h4>
-                <p>Export your leads sheet as CSV (or any CSV with Name, Phone, Email, Course columns) and upload it here.</p>
-                <input type="file" accept=".csv,text/csv" onChange={handleCSVFile} />
+                <h4>Upload an Excel or CSV file</h4>
+                <p>Upload a .xlsx, .xls, or .csv file with Name, Phone, Email, and Course columns. For Excel files, the first sheet is imported.</p>
+                <input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleImportFile} />
+                {fileImportMsg && <div className="import-status" style={{marginTop:'8px'}}>{fileImportMsg}</div>}
               </div>
 
               <div className="import-box">
@@ -1249,7 +1296,7 @@ function LeadsTable({ rows, sortKey, sortDir, toggleSort, openDrawer, selectable
                 <td><span className={"badge "+statusClass(l.status)}>{l.status}</span></td>
                 <td><span className={"badge "+tempClass(l.temp)}>{l.temp}</span></td>
                 <td className={isOverdue?"date-overdue":""}>{fmtDate(l.nextFollowUp)}</td>
-                <td><span className={"badge "+(l.admissionStatus==="Admitted"?"b-success":"b-neutral")}>{l.admissionStatus}</span></td>
+                <td><span className={"badge "+(isAdmittedLead(l)?"b-success":"b-neutral")}>{l.admissionStatus}</span></td>
               </tr>
             );
           })}
